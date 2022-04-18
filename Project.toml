@@ -1,0 +1,13 @@
+name = "OpenFASTWrappers"
+uuid = "c94a8522-7796-4509-a98e-0a76268fb7dc"
+authors = ["Kevin R. Moore <kevmoor@sandia.gov> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
