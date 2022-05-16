@@ -1,5 +1,8 @@
 module OpenFASTWrappers
+import Libdl
 
-# Write your package code here.
+export ifwinit, ifwcalcoutput, ifwend
+
+include("./inflowwind.jl")
 
 end
