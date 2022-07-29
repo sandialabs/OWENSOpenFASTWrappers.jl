@@ -37,8 +37,11 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 * `MSL2SWL::float`:     optional, offset between still-water level and mean sea level (default: 0.0 m) [positive upward, used only for an MHK turbine]
 
 * `storeHHVel::bool`:   optional, internal parameter for adi_library.  Exposed for convenience, but not needed.
-* `WrVTK::int`:         optional, write VTK output files at all timesteps to visualize AeroDyn 15 meshes [0 none (default), 1 ref, 2 motion]
 * `transposeDCM::bool`: optional, transpose DCM internally in ADI to match calling code convention for direction cosine matrices (default: true)
+* `WrVTK::int`:         optional, write VTK output files at all timesteps to visualize AeroDyn 15 meshes [0 none (default), 1 ref, 2 motion]
+* `WrVTK_Type::int`:    optional, write VTK output files as [1 surfaces (default), 2 lines, 3 both]
+* `VTKNacDim::Array(float*6)`   optional, Nacelle Dimension for VTK visualization x0,y0,z0,Lx,Ly,Lz (m)
+* `VTKHubRad::float`:   optional, HubRadius for VTK visualization (m)
 
 * `initHubPos::Array(float)`: required, (x,y,z) position of hub
 * `initHubOrient::Array(float)`: required, orientation of hub as 9 element vector of flattened DCM
@@ -80,8 +83,11 @@ function ADI_Init(adilib_filename, output_root_name;
     WtrDpth     =       0.0,  # Water depth (m)
     MSL2SWL     =       0.0,  # Offset between still-water level and mean sea level (m) [positive upward]
     storeHHVel  = false, 
-    WrVTK       = 0,          # write VTK files from adi [0 none, 1 ref, 2 motion]
     transposeDCM= true,       # transpose DCM internally for calculations
+    WrVTK       = 0,          # write VTK files from adi [0 none, 1 ref, 2 motion]
+    WrVTK_Type  = 1,          # write VTK files from adi [1 surfaces, 2 lines, 3 both]
+    VTKNacDim   = [-1 ,-1 ,-1 ,2 ,2 ,2],        # Nacelle Dimension for VTK visualization x0,y0,z0,Lx,Ly,Lz (m)
+    VTKHubRad   = 0.1,                          # HubRadius for VTK visualization (m)
     initHubPos         = zeros(3),  # initial position vector of hub
     initHubOrient      = zeros(9),  # initial orientation of hub (flattened 3x3 DCM)
     initNacellePos     = zeros(3),  # initial position vector of nacelle 
@@ -101,41 +107,40 @@ function ADI_Init(adilib_filename, output_root_name;
 
     # AeroDyn 15 input file
     if ad_input_file_passed == false
-        error("ad_input_file_passed == false is not currently supported")
-    end
-
-    if ad_input_file == "none"
-        ad_input_string_array = [
-        ]
-        error("Default AeroDyn input file not setup yet.")
+        ad_input_string = ad_input_file
     else
-        println("Reading AeroDyn data from $ad_input_file.")
-        fid = open(ad_input_file, "r") 
-        ad_input_string_array = readlines(fid)
-        close(fid)
+        if ad_input_file == "none"
+            ad_input_string_array = [
+            ]
+            error("Default AeroDyn input file not setup yet.")
+        else
+            println("Reading AeroDyn data from $ad_input_file.")
+            fid = open(ad_input_file, "r") 
+            ad_input_string_array = readlines(fid)
+            ad_input_string        = join(ad_input_string_array, "\0")
+            close(fid)
+        end
     end
-
-    ad_input_string        = join(ad_input_string_array, "\0")
     ad_input_string_length = length(ad_input_string)
 
 
     # InflowWind input file
     if ifw_input_file_passed == false
-        error("ifw_input_file_passed == false is not currently supported")
-    end
-
-    if ifw_input_file == "none"
-        ifw_input_string_array = [
-        ]
-        error("Default InflowWind input file not setup yet.")
+        ifw_input_string = ifw_input_file
     else
-        println("Reading InfloWind data from $ifw_input_file.")
-        fid = open(ifw_input_file, "r") 
-        ifw_input_string_array = readlines(fid)
-        close(fid)
+        if ifw_input_file == "none"
+            ifw_input_string_array = [
+            ]
+            error("Default InflowWind input file not setup yet.")
+        else
+            println("Reading InfloWind data from $ifw_input_file.")
+            fid = open(ifw_input_file, "r") 
+            ifw_input_string_array = readlines(fid)
+            ifw_input_string        = join(ifw_input_string_array, "\0")
+            close(fid)
+        end
     end
-    ifw_input_string        = join(ifw_input_string_array, "\0")
-    ifw_input_string_length = length(ad_input_string)
+    ifw_input_string_length = length(ifw_input_string)
 
 
     # Allocate Outputs
@@ -175,8 +180,11 @@ function ADI_Init(adilib_filename, output_root_name;
             Ref{Cdouble},       # IN: dt
             Ref{Cdouble},       # IN: t_max
             Ref{Cint},          # IN: storeHHVel    (c_bool)
-            Ref{Cint},          # IN: WrVTK
             Ref{Cint},          # IN: transposeDCM  (c_bool)
+            Ref{Cint},          # IN: WrVTK
+            Ref{Cint},          # IN: WrVTK_Type
+            Ref{Cfloat},        # IN: VTKNacDim
+            Ref{Cfloat},        # IN: VTKHubRad
             Ref{Cfloat},        # IN: initHubPos
             Ref{Cdouble},       # IN: initHubOrient (do we need to flatten this, or just do fortran index order???)
             Ref{Cfloat},        # IN: initNacellePos
@@ -212,8 +220,11 @@ function ADI_Init(adilib_filename, output_root_name;
             dt,
             t_max,
             Cint.(storeHHVel),
-            WrVTK,
             Cint.(transposeDCM),
+            WrVTK,
+            WrVTK_Type,
+            Cfloat.(VTKNacDim),
+            VTKHubRad,
             Cfloat.(initHubPos),
             Cdouble.(initHubOrient),
             Cfloat.(initNacellePos),
