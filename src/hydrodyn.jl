@@ -1,26 +1,27 @@
-global hdLib
-global symCalcOutput
-global symUpdateStates
-global symEnd
+global hdlib
+global sym_calcoutput
+global sym_updatestates
+global sym_end
+global backup_Vx
 
 path,_ = splitdir(@__FILE__)
 
-mutable struct HDError
+mutable struct HD_Error
 error_status
 error_message
 end
 
-function hdInit(;hdLib_filename="$path/../deps/bin/HydroDyn_c_lib_x64.dll", output_root_name="hd.out", input_file="none", WtrDens=1025, WtrDpth=200, MSL2SWL=0,
-    WaveMod=3, WaveStMod=0, WaveHs=1.2646, WaveTp=10.0, WavePkShp="DEFAULT", WaveDir=0.0, WaveSeed=123456789, gravity = 9.80665,
-    PotFile="$path/../test/data/hd/potflow/marinsemi",
+function HD_Init(hdlib_filename, output_root_name; hd_input_file="none", WtrDens=1025, WtrDpth=200, MSL2SWL=0,
+    WaveMod=2, WaveStMod=0, WaveHs=2.0, WaveTp=6.0, WavePkShp=1.0, WaveDir=0.0, WaveSeed=123456789, gravity = 9.80665,
+    PotFile="$path/../test/tlpmit",
     CurrMod=0, CurrSSV0=0, CurrSSDir="DEFAULT", CurrNSRef=20, CurrNSV0=0, CurrNSDir=0, CurrDIV=0, CurrDIDir=0,
     ptfm_ref_pos_x=0.0, ptfm_ref_pos_y=0.0, num_node_pts=1,
     init_node_pos=zeros(6), interp_order=1, t_initial=0.0, dt=0.01, t_max=60.0)
 
-    global abort_error_level = 4
+    global hd_abort_error_level = 4
 
 
-    if input_file == "none"
+    if hd_input_file == "none"
         # Where the input is manipulated
         WtrDens_str = "      $WtrDens    WtrDens        - Water density (kg/m^3)"
         WtrDpth_str = "      $WtrDpth    WtrDpth        - Water depth (meters)"
@@ -35,7 +36,7 @@ function hdInit(;hdLib_filename="$path/../deps/bin/HydroDyn_c_lib_x64.dll", outp
         PotFile_str = "  \"$PotFile\"    PotFile       - Root name of potential-flow model data; WAMIT output files containing the linear, nondimensionalized, hydrostatic restoring matrix (.hst), frequency-dependent hydrodynamic added mass matrix and damping matrix (.1), and frequency- and direction-dependent wave excitation force vector per unit wave amplitude (.3) (quoted string) [1 to NBody if NBodyMod>1] [MAKE SURE THE FREQUENCIES INHERENT IN THESE WAMIT FILES SPAN THE PHYSICALLY-SIGNIFICANT RANGE OF FREQUENCIES FOR THE GIVEN PLATFORM; THEY MUST CONTAIN THE ZERO- AND INFINITE-FREQUENCY LIMITS!]"
 
         input_string_array = [
-            "------- HydroDyn Input File --------------------------------------------",
+            "------- HydroDyn v2.03.* Input File --------------------------------------------",
             "NREL 5.0 MW offshore baseline floating platform HydroDyn input properties for the TLP.",
             "   False         Echo           - Echo the input file data (flag)",
         "---------------------- ENVIRONMENTAL CONDITIONS --------------------------------",
@@ -79,7 +80,6 @@ function hdInit(;hdLib_filename="$path/../deps/bin/HydroDyn_c_lib_x64.dll", outp
                 "       0    CurrNSV0       - Near-surface current velocity at still water level (m/s) [used only when CurrMod=1]",
                 "       0    CurrNSDir      - Near-surface current heading direction         (degrees) [used only when CurrMod=1]",
                 "       0    CurrDIV        - Depth-independent current velocity                 (m/s) [used only when CurrMod=1]",
-                "       0    CurrDIDir      - Depth-independent current heading direction    (degrees) [used only when CurrMod=1]",
         "---------------------- FLOATING PLATFORM --------------------------------------- [unused with WaveMod=6]",
                 "        1   PotMod         - Potential-flow model {0: none=no potential flow, 1: frequency-to-time-domain transforms based on WAMIT output, 2: fluid-impulse theory (FIT)} (switch)",
                 "        1   ExctnMod       - Wave-excitation model {0: no wave-excitation calculation, 1: DFT, 2: state-space} (switch) [only used when PotMod=1; STATE-SPACE REQUIRES *.ssexctn INPUT FILE]",
@@ -273,26 +273,61 @@ function hdInit(;hdLib_filename="$path/../deps/bin/HydroDyn_c_lib_x64.dll", outp
                 "       0   NJOutputs      - Number of joint outputs [Must be < 10]",
                 "       0   JOutLst        - List of JointIDs which are to be output (-)[unused if NJOutputs=0]",
     "---------------------- OUTPUT --------------------------------------------------",
-        "  False            HDSum          - Output a summary file [flag]",
+        "  True             HDSum          - Output a summary file [flag]",
         "  False            OutAll         - Output all user-specified member and joint loads (only at each member end, not interior locations) [flag]",
         "               3   OutSwtch       - Output requested channels to: [1=Hydrodyn.out, 2=GlueCode.out, 3=both files]",
         " \"E15.7e2\"       OutFmt         - Output format for numerical results (quoted string) [not checked for validity]",
         "\"A11\"            OutSFmt        - Output format for header strings (quoted string) [not checked for validity]",
     "---------------------- OUTPUT CHANNELS -----------------------------------------",
         "\"Wave1Elev\"               - Wave elevation at the platform reference point (  0,  0)",
+        "\"HydroFxi\"",
+        "\"HydroFyi\"",
+        "\"HydroFzi\"",
+        "\"HydroMxi\"",
+        "\"HydroMyi\"",
+        "\"HydroMzi\"",
         "\"B1Surge\"",
         "\"B1Sway\"",
         "\"B1Heave\"",
         "\"B1Roll\"",
         "\"B1Pitch\"",
         "\"B1Yaw\"",
+        "\"B1TVxi\"",
+        "\"B1TVyi\"",
+        "\"B1TVzi\"",
+        "\"B1RVxi\"",
+        "\"B1RVyi\"",
+        "\"B1RVzi\"",
+        "\"B1TAxi\"",
+        "\"B1TAyi\"",
+        "\"B1TAzi\"",
+        "\"B1RAxi\"",
+        "\"B1RAyi\"",
+        "\"B1RAzi\"",
+        "\"B1WvsFxi\"",
+        "\"B1WvsFyi\"",
+        "\"B1WvsFzi\"",
+        "\"B1WvsMxi\"",
+        "\"B1WvsMyi\"",
+        "\"B1WvsMzi\"",
+        "\"B1HDSFxi\"",
+        "\"B1HDSFyi\"",
+        "\"B1HDSFzi\"",
+        "\"B1HDSMxi\"",
+        "\"B1HDSMyi\"",
+        "\"B1HDSMzi\"",
+        "\"B1RdtFxi\"",
+        "\"B1RdtFyi\"",
+        "\"B1RdtFzi\"",
+        "\"B1RdtMxi\"",
+        "\"B1RdtMyi\"",
+        "\"B1RdtMzi\"",
         "END of output channels and end of file. (the word 'END' must appear in the first 3 columns of this line)",
-        ""
     ]
 
     else
-        println("Reading HydroDyn data from $input_file.")
-        fid = open(input_file, "r") 
+        println("Reading HydroDyn data from $hd_input_file.")
+        fid = open(hd_input_file, "r") 
         input_string_array = readlines(fid)
         close(fid)
     end
@@ -305,15 +340,16 @@ function hdInit(;hdLib_filename="$path/../deps/bin/HydroDyn_c_lib_x64.dll", outp
     channel_names = string(repeat(" ", 20 * 4000))
     channel_units = string(repeat(" ", 20 * 4000))
 
-    global hdLib = Libdl.dlopen(hdLib_filename) # Open the library explicitly.
-    global hdActive = true
+    global hdlib = Libdl.dlopen(hdlib_filename) # Open the library explicitly.
+    global hd_active = true
 
-    symInit = Libdl.dlsym(hdLib, :HydroDyn_C_Init)   # Get a symbol for the function to call.
-    global symCalcOutput = Libdl.dlsym(hdLib, :HydroDyn_C_CalcOutput)   # Get a symbol for the function to call.
-    global symUpdateStates = Libdl.dlsym(hdLib, :HydroDyn_C_UpdateStates)
-    global symEnd = Libdl.dlsym(hdLib, :HydroDyn_C_End) # !!! "c" is capitalized in library, change if errors
-    global hdErr = HDError([0], string(repeat(" ", 1025)))
-    ccall(symInit,Cint,
+    hd_sym_init = Libdl.dlsym(hdlib, :HydroDyn_C_Init)   # Get a symbol for the function to call.
+    global hd_sym_calcoutput = Libdl.dlsym(hdlib, :HydroDyn_C_CalcOutput)   # Get a symbol for the function to call.
+    global hd_sym_updatestates = Libdl.dlsym(hdlib, :HydroDyn_C_UpdateStates)
+    global hd_sym_end = Libdl.dlsym(hdlib, :HydroDyn_C_End) # !!! "c" is capitalized in library, change if errors
+    global hd_err = HD_Error([0], string(repeat(" ", 1025)))
+    
+    ccall(hd_sym_init,Cint,
         (Cstring,           # IN: output_root_name
         Ptr{Ptr{Cchar}},    # IN: input_string_array
         Ref{Cint},          # IN: input_string_length
@@ -352,18 +388,21 @@ function hdInit(;hdLib_filename="$path/../deps/bin/HydroDyn_c_lib_x64.dll", outp
         num_channels,
         channel_names,
         channel_units,
-        hdErr.error_status,
-        hdErr.error_message)
+        hd_err.error_status,
+        hd_err.error_message)
 
-    hdCheckError()
+    hd_check_error()
 
 end
 
-function hdCalcOutput(time, node_pos, node_vel, node_acc, node_force, out_channel_vals; num_node_pts=1)
+function HD_CalcOutput(time, node_pos, node_vel, node_acc, node_force, out_channel_vals; num_node_pts=1)
 
-    if hdActive
+    # error_message = string(repeat(" ", 1025))
+    # error_status = [0]
+
+    if hd_active
         
-        ccall(symCalcOutput,Cint,
+        ccall(hd_sym_calcoutput,Cint,
             (Ptr{Cdouble},      # IN: time
             Ref{Cint},          # IN: num_node_pts
             Ref{Cfloat},        # IN: node_pos
@@ -380,23 +419,23 @@ function hdCalcOutput(time, node_pos, node_vel, node_acc, node_force, out_channe
             Cfloat.(node_acc),
             node_force,
             out_channel_vals,
-            hdErr.error_status,
-            hdErr.error_message) 
+            hd_err.error_status,
+            hd_err.error_message) 
 
-        hdCheckError()
+        hd_check_error()
 
     else
-        error("HydroDyn instance has not been initialized. Use hdInit() function.")
+        error("HydroDyn instance has not been initialized. Use HD_Init() function.")
     end
 
     return node_force, out_channel_vals
 end
 
-function hdUpdateStates(time, next_time, node_pos, node_vel, node_acc; num_node_pts=1)
+function HD_UpdateStates(time, next_time, node_pos, node_vel, node_acc; num_node_pts=1)
 
-    if hdActive
+    if hd_active
 
-        ccall(symUpdateStates,Cint,
+        ccall(hd_sym_updatestates,Cint,
             (Ptr{Cdouble},      # IN: time
             Ptr{Cdouble},       # IN: next_time
             Ref{Cint},          # IN: num_node_pts
@@ -411,45 +450,45 @@ function hdUpdateStates(time, next_time, node_pos, node_vel, node_acc; num_node_
             Cfloat.(node_pos),
             Cfloat.(node_vel),
             Cfloat.(node_acc),
-            hdErr.error_status,
-            hdErr.error_message) 
+            hd_err.error_status,
+            hd_err.error_message) 
 
-        hdCheckError()
+        hd_check_error()
 
     else
-        error("HydroDyn instance has not been initialized. Use hdInit() function.")
+        error("HydroDyn instance has not been initialized. Use HD_Init() function.")
     end
 end
 
-function hdEnd()
+function HD_End()
 
-    if hdActive
+    if hd_active
 
-        global hdActive = false
-        ccall(symEnd,Cint,
+        global hd_active = false
+        ccall(hd_sym_end,Cint,
         (Ptr{Cint},         # OUT: ErrStat_C
         Cstring),           # OUT: ErrMsg_C
-        hdErr.error_status,
-        hdErr.error_message)
+        hd_err.error_status,
+        hd_err.error_message)
 
-        Libdl.dlclose(hdLib) # Close the library explicitly.
+        Libdl.dlclose(hdlib) # Close the library explicitly.
 
     end
 end
 
-function hdCheckError()
-    if hdErr.error_status[1] == 0
-        hdErr.error_status = [0] # reset error status/message
-        hdErr.error_message = string(repeat(" ", 1025))
-    elseif hdErr.error_status[1] < abort_error_level
-        @warn("Error status " * string(hdErr.error_status[1]) * ": " * string(hdErr.error_message))
-        hdErr.error_status = [0] # reset error status/message
-        hdErr.error_message = string(repeat(" ", 1025))
+function hd_check_error()
+    if hd_err.error_status[1] == 0
+        hd_err.error_status = [0] # reset error status/message
+        hd_err.error_message = string(repeat(" ", 1025))
+    elseif hd_err.error_status[1] < hd_abort_error_level
+        @warn("Error status " * string(hd_err.error_status[1]) * ": " * string(hd_err.error_message))
+        hd_err.error_status = [0] # reset error status/message
+        hd_err.error_message = string(repeat(" ", 1025))
     else
-        @warn("Error status " * string(hdErr.error_status[1]) * ": " * string(hdErr.error_message))
-        hdErr.error_status = [0] # reset error status/message
-        hdErr.error_message = string(repeat(" ", 1025))
-        hdEnd()
+        @warn("Error status " * string(hd_err.error_status[1]) * ": " * string(hd_err.error_message))
+        hd_err.error_status = [0] # reset error status/message
+        hd_err.error_message = string(repeat(" ", 1025))
+        HD_End()
         error("HydroDyn terminated prematurely.")
     end
 end

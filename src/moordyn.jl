@@ -1,11 +1,12 @@
-global mdlib
-global symCalcOutput
-global symUpdateStates
-global symEnd
+global hdlib
+global sym_calcoutput
+global sym_updatestates
+global sym_end
+global backup_Vx
 
 path,_ = splitdir(@__FILE__)
 
-mutable struct MDError
+mutable struct MD_Error
     error_status
     error_message
 end
@@ -17,11 +18,11 @@ def_fairlead_pts = [[20.434, 35.393, -14.],
                     [-40.868, 0., -14.],
                     [20.434, -35.393, -14.]]
 
-function mdInit(;mdLib_filename="$path/../deps/bin/MoorDyn_c_lib_x64.dll", input_file="none", WtrDens=1025, WtrDpth=200, init_ptfm_pos=zeros(6), gravity=9.80665, dt=0.01, interp_order=1)
+function MD_Init(mdlib_filename; md_input_file="none", WtrDens=1025, WtrDpth=200, init_ptfm_pos=zeros(6), gravity=9.80665, dt=0.01, interp_order=1)
 
-    global abort_error_level = 4
+    global md_abort_error_level = 4
     
-    if input_file == "none"
+    if md_input_file == "none"
         # TODO specify pts and line type parameters when directly passing variables
         input_string_array = [
             "--------------------- MoorDyn v2.a8 Input File ------------------------------                                                                                                      ",
@@ -61,13 +62,12 @@ function mdInit(;mdLib_filename="$path/../deps/bin/MoorDyn_c_lib_x64.dll", input
             "AnchTen2                                                                                                                                                                           ",
             "AnchTen3                                                                                                                                                                           ",
             "END                                                                                                                                                                                ",
-            "---------------------- need this line ----------------------------------                                                                                                           ",
-            ""
+            "---------------------- need this line ----------------------------------                                                                                                           "
             ]
     
     else
-        println("Reading MoorDyn data from $input_file.")
-        fid = open(input_file, "r") 
+        println("Reading MoorDyn data from $md_input_file.")
+        fid = open(md_input_file, "r") 
         input_string_array = readlines(fid)
         close(fid)
     end
@@ -80,15 +80,15 @@ function mdInit(;mdLib_filename="$path/../deps/bin/MoorDyn_c_lib_x64.dll", input
     channel_names = string(repeat(" ", 20 * 4000))
     channel_units = string(repeat(" ", 20 * 4000))
 
-    global mdLib = Libdl.dlopen(mdLib_filename) # Open the library explicitly.
-    global mdActive = true
-    global symInit = Libdl.dlsym(mdLib, :MD_INIT_C)   # Get a symbol for the function to call.
-    global symCalcOutput = Libdl.dlsym(mdLib, :MD_CALCOUTPUT_C)
-    global symUpdateStates = Libdl.dlsym(mdLib, :MD_UPDATESTATES_C)
-    global symEnd = Libdl.dlsym(mdLib, :MD_END_C)
-    global mdErr = MDError([0], string(repeat(" ", 1025)))
+    global mdlib = Libdl.dlopen(mdlib_filename) # Open the library explicitly.
+    global md_active = true
+    global md_sym_init = Libdl.dlsym(mdlib, :MD_INIT_C)   # Get a symbol for the function to call.
+    global md_sym_calcoutput = Libdl.dlsym(mdlib, :MD_CALCOUTPUT_C)   # Get a symbol for the function to call.
+    global md_sym_updatestates = Libdl.dlsym(mdlib, :MD_UPDATESTATES_C)
+    global md_sym_end = Libdl.dlsym(mdlib, :MD_END_C) # !!! "c" is capitalized in library, change if errors
+    global md_err = MD_Error([0], string(repeat(" ", 1025)))
 
-    ccall(symInit,Cint,
+    ccall(md_sym_init,Cint,
         (Ptr{Ptr{Cchar}},   # IN: input_string
         Ref{Cint},          # IN: input_string_length
         Ref{Cdouble},       # IN: dt
@@ -101,7 +101,7 @@ function mdInit(;mdLib_filename="$path/../deps/bin/MoorDyn_c_lib_x64.dll", input
         Cstring,            # OUT: channel_names
         Cstring,            # OUT: channel_units
         Ptr{Cint},          # OUT: error_status
-        Cstring),            # OUT: error_message
+        Cstring),           # OUT: error_message,
         [input_string],
         input_string_length,
         dt,
@@ -113,18 +113,18 @@ function mdInit(;mdLib_filename="$path/../deps/bin/MoorDyn_c_lib_x64.dll", input
         num_channels,
         channel_names,
         channel_units,
-        mdErr.error_status,
-        mdErr.error_message)
+        md_err.error_status,
+        md_err.error_message)
 
-    mdCheckError() 
+    md_check_error() 
 
 end
 
-function mdCalcOutput(time, positions, velocities, accelerations, forces, out_channel_vals)
+function MD_CalcOutput(time, positions, velocities, accelerations, forces, out_channel_vals)
 
-    if mdActive
+    if md_active
 
-        ccall(symCalcOutput,Cint,
+        ccall(md_sym_calcoutput,Cint,
             (Ptr{Cdouble},      # IN: time
             Ref{Cfloat},        # IN: positions
             Ref{Cfloat},        # IN: velocities
@@ -139,24 +139,24 @@ function mdCalcOutput(time, positions, velocities, accelerations, forces, out_ch
             Cfloat.(accelerations),
             forces,
             out_channel_vals,
-            mdErr.error_status,
-            mdErr.error_message) 
+            md_err.error_status,
+            md_err.error_message) 
 
-        mdCheckError()  
+        md_check_error()  
 
     else
-        error("MoorDyn instance has not been initialized. Use mdInit() function.")
+        error("MoorDyn instance has not been initialized. Use MD_Init() function.")
     end
 
     return forces, out_channel_vals
 
 end
 
-function mdUpdateStates(prev_time, curr_time, next_time, positions, velocities, accelerations)
+function MD_UpdateStates(prev_time, curr_time, next_time, positions, velocities, accelerations)
 
-    if mdActive
+    if md_active
 
-        ccall(symUpdateStates,Cint,
+        ccall(md_sym_updatestates,Cint,
             (Ptr{Cdouble},      # IN: prev_time (t-dt)
             Ptr{Cdouble},       # IN: curr_time (t)
             Ptr{Cdouble},       # IN: next_time (t+dt)
@@ -171,44 +171,44 @@ function mdUpdateStates(prev_time, curr_time, next_time, positions, velocities, 
             Cfloat.(positions),
             Cfloat.(velocities),
             Cfloat.(accelerations),
-            mdErr.error_status,
-            mdErr.error_message) 
+            md_err.error_status,
+            md_err.error_message) 
 
-        mdCheckError()
+        md_check_error()
 
     else
-        error("MoorDyn instance has not been initialized. Use mdInit() function.")
+        error("MoorDyn instance has not been initialized. Use MD_Init() function.")
     end
 end
 
-function mdEnd()
+function MD_End()
 
-    if mdActive
-        global mdActive  = false
-        ccall(symEnd,Cint,
+    if md_active
+        global md_active  = false
+        ccall(md_sym_end,Cint,
         (Ptr{Cint},         # OUT: ErrStat_C
         Cstring),           # OUT: ErrMsg_C
-        mdErr.error_status,
-        mdErr.error_message)
+        md_err.error_status,
+        md_err.error_message)
 
-        Libdl.dlclose(mdLib) # Close the library explicitly.
+        Libdl.dlclose(mdlib) # Close the library explicitly.
 
     end
 end
 
-function mdCheckError()
-    if mdErr.error_status[1] == 0
-        mdErr.error_status = [0] # reset error status/message
-        mdErr.error_message = string(repeat(" ", 1025))
-    elseif mdErr.error_status[1] < abort_error_level
-        @warn("Error status " * string(mdErr.error_status[1]) * ": " * mdErr.error_message)
-        mdErr.error_status = [0] # reset error status/message
-        mdErr.error_message = string(repeat(" ", 1025))
+function md_check_error()
+    if md_err.error_status[1] == 0
+        md_err.error_status = [0] # reset error status/message
+        md_err.error_message = string(repeat(" ", 1025))
+    elseif md_err.error_status[1] < md_abort_error_level
+        @warn("Error status " * string(md_err.error_status[1]) * ": " * string(md_err.error_message))
+        md_err.error_status = [0] # reset error status/message
+        md_err.error_message = string(repeat(" ", 1025))
     else
-        @error("Error status " * string(mdErr.error_status[1]) * ": " * mdErr.error_message)
-        mdErr.error_status = [0] # reset error status/message
-        mdErr.error_message = string(repeat(" ", 1025))
-        mdEnd()
+        @warn("Error status " * string(md_err.error_status[1]) * ": " * string(md_err.error_message))
+        md_err.error_status = [0] # reset error status/message
+        md_err.error_message = string(repeat(" ", 1025))
+        MD_End()
         error("MoorDyn terminated prematurely.")
     end
 end
