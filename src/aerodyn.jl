@@ -69,7 +69,7 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 * `channel_units::string`: string of output channel units from ADI
 
 """
-function ADI_Init(adilib_filename, output_root_name;
+function adiInit(adilib_filename, output_root_name;
     ad_input_file_passed= true,
     ad_input_file="none",
     ifw_input_file_passed= true,
@@ -251,7 +251,7 @@ function ADI_Init(adilib_filename, output_root_name;
 
 end
 
-function ADI_CalcOutput(time, 
+function adiCalcOutput(time, 
                  hubPos, hubOrient, hubVel, hubAcc,
                  nacPos, nacOrient, nacVel, nacAcc,
                  rootPos, rootOrient, rootVel, rootAcc,
@@ -314,7 +314,7 @@ function ADI_CalcOutput(time,
     return meshFrcMom, out_channel_vals
 end
 
-function ADI_UpdateStates(time, next_time,
+function adiUpdateStates(time, next_time,
                  hubPos, hubOrient, hubVel, hubAcc,
                  nacPos, nacOrient, nacVel, nacAcc,
                  rootPos, rootOrient, rootVel, rootAcc,
@@ -370,7 +370,7 @@ function ADI_UpdateStates(time, next_time,
     end
 end
 
-function ADI_End()
+function adiEnd()
     if adi_active
         global adi_active = false
         try
