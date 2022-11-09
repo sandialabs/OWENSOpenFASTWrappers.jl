@@ -157,8 +157,7 @@ function mdUpdateStates(prev_time, curr_time, next_time, positions, velocities, 
     if mdActive
 
         ccall(symUpdateStates,Cint,
-            (Ptr{Cdouble},      # IN: prev_time (t-dt)
-            Ptr{Cdouble},       # IN: curr_time (t)
+            (Ptr{Cdouble},       # IN: curr_time (t)
             Ptr{Cdouble},       # IN: next_time (t+dt)
             Ref{Cfloat},        # IN: positions
             Ref{Cfloat},        # IN: velocities
