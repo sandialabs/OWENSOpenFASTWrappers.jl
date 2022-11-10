@@ -1,6 +1,6 @@
 # OpenFASTWrappers
 
-A repository containing julia wrappers for standalone openFAST modules.
+A repository containing julia wrappers for standalone openFAST modules.  These modules (moordyn, hydrodyn, and inflowwind) are built per the openfast build instructions for dynamic libraries found in the openfast documentation.  The binaries are then placed in a working directory of this module (like deps/bin) or the library path updated in the module.
 
 ## Quick Start for Developing Julia Packages
 

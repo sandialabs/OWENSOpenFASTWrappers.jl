@@ -82,10 +82,10 @@ function mdInit(;mdLib_filename="$path/../deps/bin/MoorDyn_c_lib_x64.dll", input
 
     global mdLib = Libdl.dlopen(mdLib_filename) # Open the library explicitly.
     global mdActive = true
-    global symInit = Libdl.dlsym(mdLib, :MD_INIT_C)   # Get a symbol for the function to call.
-    global symCalcOutput = Libdl.dlsym(mdLib, :MD_CALCOUTPUT_C)
-    global symUpdateStates = Libdl.dlsym(mdLib, :MD_UPDATESTATES_C)
-    global symEnd = Libdl.dlsym(mdLib, :MD_END_C)
+    global symInit = Libdl.dlsym(mdLib, :MD_C_Init)   # Get a symbol for the function to call.
+    global symCalcOutput = Libdl.dlsym(mdLib, :MD_C_CalcOutput)
+    global symUpdateStates = Libdl.dlsym(mdLib, :MD_C_UpdateStates)
+    global symEnd = Libdl.dlsym(mdLib, :MD_C_End)
     global mdErr = MDError([0], string(repeat(" ", 1025)))
 
     ccall(symInit,Cint,
@@ -157,8 +157,7 @@ function mdUpdateStates(prev_time, curr_time, next_time, positions, velocities, 
     if mdActive
 
         ccall(symUpdateStates,Cint,
-            (Ptr{Cdouble},      # IN: prev_time (t-dt)
-            Ptr{Cdouble},       # IN: curr_time (t)
+            (Ptr{Cdouble},       # IN: curr_time (t)
             Ptr{Cdouble},       # IN: next_time (t+dt)
             Ref{Cfloat},        # IN: positions
             Ref{Cfloat},        # IN: velocities
