@@ -442,11 +442,11 @@ function hdCheckError()
         hdErr.error_status = [0] # reset error status/message
         hdErr.error_message = string(repeat(" ", 1025))
     elseif hdErr.error_status[1] < abort_error_level
-        @warn("Error status " * string(hdErr.error_status[1]) * ": " * string(hdErr.error_message))
+        println("Error status " * string(hdErr.error_status[1]) * ": " * string(hdErr.error_message))
         hdErr.error_status = [0] # reset error status/message
         hdErr.error_message = string(repeat(" ", 1025))
     else
-        @warn("Error status " * string(hdErr.error_status[1]) * ": " * string(hdErr.error_message))
+        println("Error status " * string(hdErr.error_status[1]) * ": " * string(hdErr.error_message))
         hdErr.error_status = [0] # reset error status/message
         hdErr.error_message = string(repeat(" ", 1025))
         hdEnd()
