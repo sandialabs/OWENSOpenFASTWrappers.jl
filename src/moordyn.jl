@@ -153,7 +153,7 @@ function mdCalcOutput(time, positions, velocities, accelerations, forces, out_ch
 
 end
 
-function mdUpdateStates(prev_time, curr_time, next_time, positions, velocities, accelerations)
+function mdUpdateStates(curr_time, next_time, positions, velocities, accelerations)
 
     if mdActive
 
@@ -164,8 +164,7 @@ function mdUpdateStates(prev_time, curr_time, next_time, positions, velocities, 
             Ref{Cfloat},        # IN: velocities
             Ref{Cfloat},        # IN: accelerations
             Ptr{Cint},          # OUT: error_status
-            Cstring),           # OUT: error_message 
-            [prev_time],
+            Cstring),           # OUT: error_message
             [curr_time],
             [next_time],
             Cfloat.(positions),
@@ -201,11 +200,11 @@ function mdCheckError()
         mdErr.error_status = [0] # reset error status/message
         mdErr.error_message = string(repeat(" ", 1025))
     elseif mdErr.error_status[1] < abort_error_level
-        @warn("Error status " * string(mdErr.error_status[1]) * ": " * mdErr.error_message)
+        println("Error status " * string(mdErr.error_status[1]) * ": " * mdErr.error_message)
         mdErr.error_status = [0] # reset error status/message
         mdErr.error_message = string(repeat(" ", 1025))
     else
-        @error("Error status " * string(mdErr.error_status[1]) * ": " * mdErr.error_message)
+        println("Error status " * string(mdErr.error_status[1]) * ": " * mdErr.error_message)
         mdErr.error_status = [0] # reset error status/message
         mdErr.error_message = string(repeat(" ", 1025))
         mdEnd()
