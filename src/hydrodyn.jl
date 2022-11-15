@@ -327,7 +327,7 @@ function HD_Init(hdlib_filename, output_root_name; hd_input_file="none", WtrDens
 
     else
         println("Reading HydroDyn data from $hd_input_file.")
-        fid = open(hd_input_file, "r") 
+        fid = open(hd_input_file, "r")
         input_string_array = readlines(fid)
         close(fid)
     end
@@ -348,7 +348,7 @@ function HD_Init(hdlib_filename, output_root_name; hd_input_file="none", WtrDens
     global hd_sym_updatestates = Libdl.dlsym(hdlib, :HydroDyn_C_UpdateStates)
     global hd_sym_end = Libdl.dlsym(hdlib, :HydroDyn_C_End) # !!! "c" is capitalized in library, change if errors
     global hd_err = HD_Error([0], string(repeat(" ", 1025)))
-    
+
     ccall(hd_sym_init,Cint,
         (Cstring,           # IN: output_root_name
         Ptr{Ptr{Cchar}},    # IN: input_string_array
@@ -373,12 +373,12 @@ function HD_Init(hdlib_filename, output_root_name; hd_input_file="none", WtrDens
         output_root_name,
         [input_string],
         input_string_length,
-        gravity,
-        WtrDens,
-        WtrDpth,
-        MSL2SWL,
-        ptfm_ref_pos_x,
-        ptfm_ref_pos_y,
+        Cfloat.(gravity),
+        Cfloat.(WtrDens),
+        Cfloat.(WtrDpth),
+        Cfloat.(MSL2SWL),
+        Cfloat.(ptfm_ref_pos_x),
+        Cfloat.(ptfm_ref_pos_y),
         num_node_pts,
         Cfloat.(init_node_pos),
         interp_order,
@@ -401,7 +401,7 @@ function HD_CalcOutput(time, node_pos, node_vel, node_acc, node_force, out_chann
     # error_status = [0]
 
     if hd_active
-        
+
         ccall(hd_sym_calcoutput,Cint,
             (Ptr{Cdouble},      # IN: time
             Ref{Cint},          # IN: num_node_pts
@@ -411,7 +411,7 @@ function HD_CalcOutput(time, node_pos, node_vel, node_acc, node_force, out_chann
             Ptr{Cfloat},        # OUT: node_force
             Ptr{Cfloat},        # OUT: out_channel_vals
             Ptr{Cint},          # OUT: error_status
-            Cstring),      # OUT: error_message 
+            Cstring),      # OUT: error_message
             [time],
             num_node_pts,
             Cfloat.(node_pos),
@@ -420,7 +420,7 @@ function HD_CalcOutput(time, node_pos, node_vel, node_acc, node_force, out_chann
             node_force,
             out_channel_vals,
             hd_err.error_status,
-            hd_err.error_message) 
+            hd_err.error_message)
 
         hd_check_error()
 
@@ -443,7 +443,7 @@ function HD_UpdateStates(time, next_time, node_pos, node_vel, node_acc; num_node
             Ref{Cfloat},        # IN: node_vel
             Ref{Cfloat},        # IN: node_acc
             Ptr{Cint},          # OUT: error_status
-            Cstring),           # OUT: error_message 
+            Cstring),           # OUT: error_message
             [time],
             [next_time],
             num_node_pts,
@@ -451,7 +451,7 @@ function HD_UpdateStates(time, next_time, node_pos, node_vel, node_acc; num_node
             Cfloat.(node_vel),
             Cfloat.(node_acc),
             hd_err.error_status,
-            hd_err.error_message) 
+            hd_err.error_message)
 
         hd_check_error()
 

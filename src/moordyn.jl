@@ -21,7 +21,7 @@ def_fairlead_pts = [[20.434, 35.393, -14.],
 function MD_Init(mdlib_filename; md_input_file="none", WtrDens=1025, WtrDpth=200, init_ptfm_pos=zeros(6), gravity=9.80665, dt=0.01, interp_order=1)
 
     global md_abort_error_level = 4
-    
+
     if md_input_file == "none"
         # TODO specify pts and line type parameters when directly passing variables
         input_string_array = [
@@ -64,10 +64,10 @@ function MD_Init(mdlib_filename; md_input_file="none", WtrDens=1025, WtrDpth=200
             "END                                                                                                                                                                                ",
             "---------------------- need this line ----------------------------------                                                                                                           "
             ]
-    
+
     else
         println("Reading MoorDyn data from $md_input_file.")
-        fid = open(md_input_file, "r") 
+        fid = open(md_input_file, "r")
         input_string_array = readlines(fid)
         close(fid)
     end
@@ -105,9 +105,9 @@ function MD_Init(mdlib_filename; md_input_file="none", WtrDens=1025, WtrDpth=200
         [input_string],
         input_string_length,
         dt,
-        gravity,
-        WtrDens,
-        WtrDpth,
+        Cfloat.(gravity),
+        Cfloat.(WtrDens),
+        Cfloat.(WtrDpth),
         Cfloat.(init_ptfm_pos),
         interp_order,
         num_channels,
@@ -116,7 +116,7 @@ function MD_Init(mdlib_filename; md_input_file="none", WtrDens=1025, WtrDpth=200
         md_err.error_status,
         md_err.error_message)
 
-    md_check_error() 
+    md_check_error()
 
 end
 
@@ -132,7 +132,7 @@ function MD_CalcOutput(time, positions, velocities, accelerations, forces, out_c
             Ptr{Cfloat},        # OUT: forces
             Ptr{Cfloat},        # OUT: out_channel_vals
             Ptr{Cint},          # OUT: error_status
-            Cstring),           # OUT: error_message 
+            Cstring),           # OUT: error_message
             [time],
             Cfloat.(positions),
             Cfloat.(velocities),
@@ -140,9 +140,9 @@ function MD_CalcOutput(time, positions, velocities, accelerations, forces, out_c
             forces,
             out_channel_vals,
             md_err.error_status,
-            md_err.error_message) 
+            md_err.error_message)
 
-        md_check_error()  
+        md_check_error()
 
     else
         error("MoorDyn instance has not been initialized. Use MD_Init() function.")
@@ -164,7 +164,7 @@ function MD_UpdateStates(prev_time, curr_time, next_time, positions, velocities,
             Ref{Cfloat},        # IN: velocities
             Ref{Cfloat},        # IN: accelerations
             Ptr{Cint},          # OUT: error_status
-            Cstring),           # OUT: error_message 
+            Cstring),           # OUT: error_message
             [prev_time],
             [curr_time],
             [next_time],
@@ -172,7 +172,7 @@ function MD_UpdateStates(prev_time, curr_time, next_time, positions, velocities,
             Cfloat.(velocities),
             Cfloat.(accelerations),
             md_err.error_status,
-            md_err.error_message) 
+            md_err.error_message)
 
         md_check_error()
 
