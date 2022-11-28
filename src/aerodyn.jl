@@ -57,9 +57,9 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 * `initRootPos::Array(float)`: required, size (numBlades,3) position vectors of roots
 * `initRootOrient::Array(float)`: required, size (numBlades,9) orientation DCMs flattened to array of 9 element vectors
 
-* `numMeshPts::int`: required, number of structural mesh points (total across all blades)
-* `initMeshPos::Array(float)`: required, size (numMeshPts,3) position vectors of mesh points
-* `initMeshOrient::Array(float)`: required, size (numMeshPts,9) orientation DCMs flattened to array of 9 element vectors
+* `numMeshNodes::int`: required, number of structural mesh points (total across all blades)
+* `initMeshPos::Array(float)`: required, size (numMeshNodes,3) position vectors of mesh points
+* `initMeshOrient::Array(float)`: required, size (numMeshNodes,9) orientation DCMs flattened to array of 9 element vectors
 
 * `interp_order::int`: optional, interpolation order used internally [1 first order (default), 2 second order]
 
@@ -100,9 +100,9 @@ function adiInit(adilib_filename, output_root_name;
     numBlades          = 3,         # number of blades in system
     initRootPos        = zeros(numBlades,3),    # initial root position vectors
     initRootOrient     = zeros(numBlades,9),    # initial root orientation DCMs
-    numMeshPts         = 3,         # number of mesh points representing structural mesh of rotor
-    initMeshPos        = zeros(numMeshPts,3),   # initial position vectors of all mesh points
-    initMeshOrient     = zeros(numMeshPts,9),   # initial orientations of all mesh points
+    numMeshNodes       = 1,         # number of mesh points representing structural mesh of rotor
+    initMeshPos        = zeros(numMeshNodes,3),   # initial position vectors of all mesh points
+    initMeshOrient     = zeros(numMeshNodes,9),   # initial orientations of all mesh points
     interp_order=1,
     t_initial=0.0,
     dt=0.01,
@@ -198,7 +198,7 @@ function adiInit(adilib_filename, output_root_name;
             Ref{Cint},          # IN: numBlades
             Ref{Cfloat},        # IN: initRootPos
             Ref{Cdouble},       # IN: initRootOrient (do we need to flatten this, or just do fortran index order???)
-            Ref{Cint},          # IN: numMeshPts
+            Ref{Cint},          # IN: numMeshNodes
             Ref{Cfloat},        # IN: initMeshPos
             Ref{Cdouble},       # IN: initMeshOrient (do we need to flatten this, or just do fortran index order???)
             Ptr{Cint},          # OUT: num_channels
@@ -239,7 +239,7 @@ function adiInit(adilib_filename, output_root_name;
             numBlades,
             Cfloat.(initRootPos),
             Cdouble.(initRootOrient),
-            numMeshPts,
+            numMeshNodes,
             Cfloat.(initMeshPos),
             Cdouble.(initMeshOrient),
             num_channels,
@@ -263,7 +263,7 @@ function adiCalcOutput(time,
                  nacPos, nacOrient, nacVel, nacAcc,
                  rootPos, rootOrient, rootVel, rootAcc,
                  meshPos, meshOrient, meshVel, meshAcc, meshFrcMom,
-                 out_channel_vals; num_node_pts=numMeshPts)
+                 out_channel_vals; num_node_pts=numMeshNodes)
 
     if adi_active
         ccall(adi_sym_calcoutput,Cint,
@@ -280,7 +280,7 @@ function adiCalcOutput(time,
             Ref{Cdouble},       # IN: rootOrient
             Ref{Cfloat},        # IN: rootVel 
             Ref{Cfloat},        # IN: rootAcc 
-            Ref{Cint},          # IN: numMeshPts
+            Ref{Cint},          # IN: numMeshNodes
             Ref{Cfloat},        # IN: meshPos 
             Ref{Cdouble},       # IN: meshOrient
             Ref{Cfloat},        # IN: meshVel 
@@ -325,7 +325,7 @@ function adiUpdateStates(time, next_time,
                  hubPos, hubOrient, hubVel, hubAcc,
                  nacPos, nacOrient, nacVel, nacAcc,
                  rootPos, rootOrient, rootVel, rootAcc,
-                 meshPos, meshOrient, meshVel, meshAcc; num_node_pts=numMeshPts)
+                 meshPos, meshOrient, meshVel, meshAcc; num_node_pts=numMeshNodes)
 
     if adi_active
         ccall(adi_sym_updatestates,Cint,
@@ -343,7 +343,7 @@ function adiUpdateStates(time, next_time,
             Ref{Cdouble},       # IN: rootOrient
             Ref{Cfloat},        # IN: rootVel 
             Ref{Cfloat},        # IN: rootAcc 
-            Ref{Cint},          # IN: numMeshPts
+            Ref{Cint},          # IN: numMeshNodes
             Ref{Cfloat},        # IN: meshPos 
             Ref{Cdouble},       # IN: meshOrient
             Ref{Cfloat},        # IN: meshVel 
