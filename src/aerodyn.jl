@@ -35,6 +35,10 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 * `defPvap::float`:     optional, vapour pressure of working fluid (default: 1700.0 Pa) [used only for an MHK turbine cavitation check]
 * `WtrDpth::float`:     optional, water depth (default: 0.0 m) [used only for an MHK turbine]
 * `MSL2SWL::float`:     optional, offset between still-water level and mean sea level (default: 0.0 m) [positive upward, used only for an MHK turbine]
+* `AeroProjMod::int`:   optional, aero projection mode:
+*                               1.      APM_BEM_NoSweepPitchTwist  "Original AeroDyn model where momentum balance is done in the WithoutSweepPitchTwist system"
+*                               2.      APM_BEM_Polar              "Use staggered polar grid for momentum balance in each annulus"
+*                               3.      APM_LiftingLine            "Use the blade lifting line (i.e. the structural) orientation (currently for OLAF with VAWT)"
 
 * `storeHHVel::bool`:   optional, internal parameter for adi_library.  Exposed for convenience, but not needed.
 * `transposeDCM::bool`: optional, transpose DCM internally in ADI to match calling code convention for direction cosine matrices (default: true)
@@ -82,6 +86,7 @@ function adiInit(adilib_filename, output_root_name;
     defPvap     =    1700.0,  # Vapour pressure of working fluid (Pa) [used only for an MHK turbine cavitation check]
     WtrDpth     =       0.0,  # Water depth (m)
     MSL2SWL     =       0.0,  # Offset between still-water level and mean sea level (m) [positive upward]
+    AeroProjMod =         1,  # see note
     storeHHVel  = false, 
     transposeDCM= true,       # transpose DCM internally for calculations
     WrVTK       = 0,          # write VTK files from adi [0 none, 1 ref, 2 motion]
@@ -175,6 +180,7 @@ function adiInit(adilib_filename, output_root_name;
             Ref{Cfloat},        # IN: defPvap
             Ref{Cfloat},        # IN: WtrDpth
             Ref{Cfloat},        # IN: MSL2SWL
+            Ref{Cint},          # IN: AeroProjMod
             Ref{Cint},          # IN: interp_order
             Ref{Cdouble},       # IN: t_initial
             Ref{Cdouble},       # IN: dt
@@ -215,6 +221,7 @@ function adiInit(adilib_filename, output_root_name;
             defPvap,
             WtrDpth,
             MSL2SWL,
+            AeroProjMod,
             interp_order,
             t_initial,
             dt,
