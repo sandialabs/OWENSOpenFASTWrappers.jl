@@ -5,7 +5,7 @@ global sym_end
 
 path,_ = splitdir(@__FILE__)
 
-mutable struct ADI_Error
+mutable struct adiError
 error_status
 error_message
 end
@@ -13,7 +13,7 @@ end
 
 
 """
-    ADI_Init(adilib_filename output_root_name ; )
+    adiInit(adilib_filename output_root_name ; )
 
 calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 
@@ -162,7 +162,7 @@ function adiInit(adilib_filename, output_root_name;
         global adi_sym_calcoutput = Libdl.dlsym(adilib, :AeroDyn_Inflow_C_CalcOutput)   # Get a symbol for the function to call.
         global adi_sym_updatestates = Libdl.dlsym(adilib, :AeroDyn_Inflow_C_UpdateStates)
         global adi_sym_end = Libdl.dlsym(adilib, :AeroDyn_Inflow_C_End) # !!! "c" is capitalized in library, change if errors
-        global adi_err = ADI_Error([0], string(repeat(" ", 1025)))
+        global adi_err = adiError([0], string(repeat(" ", 1025)))
         
         ccall(adi_sym_init,Cint,
             (Ref{Cint},         # IN: ad input file passed as string (c_bool)
@@ -262,8 +262,11 @@ function adiCalcOutput(time,
                  hubPos, hubOrient, hubVel, hubAcc,
                  nacPos, nacOrient, nacVel, nacAcc,
                  rootPos, rootOrient, rootVel, rootAcc,
-                 meshPos, meshOrient, meshVel, meshAcc, meshFrcMom,
-                 out_channel_vals; num_node_pts=numMeshNodes)
+                 numMeshNodes,
+                 meshPos, meshOrient, meshVel, meshAcc,
+                 num_channels)
+    meshFrcMom = zeros(Cfloat,6,numMeshNodes);
+    out_channel_vals = zeros(Cfloat,1,num_channels)
 
     if adi_active
         ccall(adi_sym_calcoutput,Cint,
@@ -302,7 +305,7 @@ function adiCalcOutput(time,
             Cdouble.(rootOrient),
             Cfloat.(rootVel),
             Cfloat.(rootAcc),
-            num_node_pts,
+            numMeshNodes,
             Cfloat.(meshPos),
             Cdouble.(meshOrient),
             Cfloat.(meshVel),
@@ -315,7 +318,7 @@ function adiCalcOutput(time,
         adi_check_error()
 
     else
-        error("AerooDyn-Inflow instance has not been initialized. Use ADI_Init() function.")
+        error("AerooDyn-Inflow instance has not been initialized. Use adiInit() function.")
     end
 
     return meshFrcMom, out_channel_vals
@@ -325,7 +328,8 @@ function adiUpdateStates(time, next_time,
                  hubPos, hubOrient, hubVel, hubAcc,
                  nacPos, nacOrient, nacVel, nacAcc,
                  rootPos, rootOrient, rootVel, rootAcc,
-                 meshPos, meshOrient, meshVel, meshAcc; num_node_pts=numMeshNodes)
+                 numMeshNodes,
+                 meshPos, meshOrient, meshVel, meshAcc)
 
     if adi_active
         ccall(adi_sym_updatestates,Cint,
@@ -363,17 +367,18 @@ function adiUpdateStates(time, next_time,
             Cdouble.(rootOrient),
             Cfloat.(rootVel),
             Cfloat.(rootAcc),
-            num_node_pts,
+            numMeshNodes,
             Cfloat.(meshPos),
             Cdouble.(meshOrient),
             Cfloat.(meshVel),
             adi_err.error_status,
             adi_err.error_message) 
 
+        #println("    return from adi_updatestates: $(adi_err.error_status)")
         adi_check_error()
 
     else
-        error("AeroDyn-Inflow instance has not been initialized. Use ADI_Init() function.")
+        error("AeroDyn-Inflow instance has not been initialized. Use adiInit() function.")
     end
 end
 
@@ -406,7 +411,7 @@ function adi_check_error()
         @error("Error status " * string(adi_err.error_status[1]) * ": " * string(adi_err.error_message))
         adi_err.error_status = [0] # reset error status/message
         adi_err.error_message = string(repeat(" ", 1025))
-        ADI_End()
+        adiEnd()
         error("AeroDyn-Inflow terminated prematurely.")
     end
 end
