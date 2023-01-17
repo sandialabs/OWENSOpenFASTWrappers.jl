@@ -48,11 +48,13 @@
       - git clone --depth 1 https://github.com/OpenFAST/openfast.git
       - mkdir openfast/build
       - cd openfast/build
+      - pwd
       - cmake -DBUILD_SHARED_LIBS=ON ..
       - make ifw_c_binding
       - make moordyn_c_binding
       - make hydrodyn_c_binding
       - cd ../../
+      - pwd
       - julia -e 'using Pkg; Pkg.add(PackageSpec(url=pwd())); Pkg.build("OpenFASTWrappers"); Pkg.test("OpenFASTWrappers";coverage=true)'
       # Comment out below if you do not want coverage results.
       - julia -e 'using Pkg; Pkg.add("Coverage");
