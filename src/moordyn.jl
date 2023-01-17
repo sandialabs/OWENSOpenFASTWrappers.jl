@@ -52,7 +52,7 @@ function MD_Init(mdlib_filename; md_input_file="none", WtrDens=1025, WtrDpth=200
             "3.0e6    kbot      - bottom stiffness (Pa/m)",
             "3.0e5    cbot      - bottom damping (Pa-s/m)",
             "2.0      dtIC      - time interval for analyzing convergence during IC gen (s)",
-            "60.0     TmaxIC    - max time for ic gen (s)",
+            "80.0     TmaxIC    - max time for ic gen (s)",
             "4.0      CdScaleIC - factor by which to scale drag coefficients during dynamic relaxation (-)",
             "0.01    threshIC  - threshold for IC convergence (-)",
             "------------------------ OUTPUTS --------------------------------------------",
