@@ -34,6 +34,7 @@
       - (echo "$GIT_SSH_PRIV_KEY" | base64 --decode) > ~/.ssh/id_rsa
       - chmod 400 ~/.ssh/id_rsa
       - 'which git || ( apt-get update -y && apt-get install git -y )'
+      - 'which cmake || ( apt-get update -y && apt-get install cmake -y )'
       - git config --global user.name "${GITLAB_USER_NAME}"
       - git config --global user.email "${GITLAB_USER_EMAIL}"
       - git config --global http.sslVerify false
