@@ -42,9 +42,7 @@ line_tensions_ts[1, :] = line_tensions
 
 # Time marching
 for (idx, t) in enumerate(ts[1:end-2])
-    println(t)
     for correction in range(1, num_corrections+1)
-        println(correction)
         # If there are correction steps, the inputs would be updated using outputs
         # from the other modules.
         ptfm_pos = ptfm_pos_ts[idx+1, :]
@@ -66,23 +64,23 @@ for (idx, t) in enumerate(ts[1:end-2])
 end
 OpenFASTWrappers.MD_End()
 
-# filename = "$path/data/moordyn_unit.h5"
+filename = "$path/data/moordyn_unit.h5"
 # HDF5.h5open(filename, "w") do file
 #     HDF5.write(file,"ts",ts) #power rating
 #     HDF5.write(file,"ptfm_force_ts",ptfm_force_ts) #speed RPM
 #     HDF5.write(file,"ptfm_pos_ts",ptfm_pos_ts) #Torque Nm
 # end
 
-# # ts = HDF5.h5read(filename,"ts")
-# ptfm_force_ts_unit = HDF5.h5read(filename,"ptfm_force_ts")
-# ptfm_pos_ts_unit = HDF5.h5read(filename,"ptfm_pos_ts")
+# ts = HDF5.h5read(filename,"ts")
+ptfm_force_ts_unit = HDF5.h5read(filename,"ptfm_force_ts")
+ptfm_pos_ts_unit = HDF5.h5read(filename,"ptfm_pos_ts")
 
-# for itest = 1:length(ptfm_force_ts[:,1])
-#     for jtest = 1:length(ptfm_force_ts[1,:])
-#         @test isapprox(ptfm_force_ts_unit[itest,jtest],ptfm_force_ts[itest,jtest],atol=1e-6)
-#         @test isapprox(ptfm_pos_ts_unit[itest,jtest],ptfm_pos_ts[itest,jtest],atol=1e-6)
-#     end
-# end
+for itest = 1:length(ptfm_force_ts[:,1])-1
+    for jtest = 1:length(ptfm_force_ts[1,:])-1
+        @test isapprox(ptfm_force_ts_unit[itest,jtest],ptfm_force_ts[itest,jtest],atol=1e-6)
+        @test isapprox(ptfm_pos_ts_unit[itest,jtest],ptfm_pos_ts[itest,jtest],atol=1e-6)
+    end
+end
 
 
 # import PyPlot
