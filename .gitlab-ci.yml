@@ -55,7 +55,9 @@
       - julia -e 'using Pkg; Pkg.add("Coverage");
         import VAWTAero; cd(joinpath(dirname(pathof(VAWTAero)), ".."));
         using Coverage; cl, tl = get_summary(process_folder());
-        println("(", cl/tl*100, "%) covered")'
+        println("", cl/tl*100," covered")'
+  coverage: '/\d+\.\d+ covered/'
+
 
 test:latest:
   image: julia:latest
