@@ -7,7 +7,8 @@ using Test
 
 cd(path)
 
-hd_lib_filename = "$path/../deps/bin/libhydrodyn_c_binding" #change this to match your local path of the HydroDyn DLL
+# hd_lib_filename = "$path/../deps/bin/libhydrodyn_c_binding" #change this to match your local path of the HydroDyn DLL
+hd_lib_filename = "$path/../../openfastmain/build/modules/hydrodyn/libhydrodyn_c_binding" #change this to match your local path of the HydroDyn DLL
 ptfm_motions_filename = "$path/OpenFAST_DisplacementTimeseries.dat"
 output_root_name = "$path/hd_wrapper_test"
 potmod_dir = "$path/data/potential_flow_data/marin_semi"
@@ -26,23 +27,23 @@ ptfm_acc_ts = ptfm_ts[:, 13:18]
 
 # Preallocate matrices
 ts = collect(t_initial:dt:t_max)
-ptfm_force_ts = Array{Float64,2}(undef, length(ts), 6)
-out_vals_ts = Array{Float64,2}(undef, length(ts), 1)
-forces = Vector{Float32}(undef, 6)
-out_vals = Vector{Float32}(undef, 1)
-
+ptfm_force_ts = zeros(Cfloat,length(ts), 6)
+out_vals_ts = zeros(Cfloat,length(ts), 1)
+forces = zeros(Cfloat,6)
+out_vals = zeros(Cfloat,43)
 # Run HydroDyn
 OpenFASTWrappers.HD_Init(hd_lib_filename, output_root_name, hd_input_file=hd_input_file, PotFile=potmod_dir, t_initial=t_initial, dt=dt, t_max=t_max)
 
 # Time step zero
-forces[:], out_vals[:] = OpenFASTWrappers.HD_CalcOutput(t_initial, ptfm_pos_ts[1,:], ptfm_vel_ts[1,:], ptfm_acc_ts[1,:], forces, out_vals)
+OpenFASTWrappers.HD_CalcOutput(t_initial, ptfm_pos_ts[1,:], ptfm_vel_ts[1,:], ptfm_acc_ts[1,:], forces, out_vals)
+
 ptfm_force_ts[1, :] = forces
-out_vals_ts[1, :] = out_vals
+out_vals_ts[1, 1] = out_vals[1]
 
 # Time marching
 for (idx, t) in enumerate(ts[1:end-1])
-    for correction in range(1, num_corrections+1)
-        println("in for loop")
+    for correction = 1:num_corrections+1
+
         # If there are correction steps, the inputs would be updated using outputs
         # from the other modules.
         ptfm_pos = ptfm_pos_ts[idx+1, :]
@@ -57,13 +58,9 @@ for (idx, t) in enumerate(ts[1:end-1])
         ptfm_vel = ptfm_vel_ts[idx+1, :]
         ptfm_acc = ptfm_acc_ts[idx+1, :]
 
-        forces[:], out_vals[:] = OpenFASTWrappers.HD_CalcOutput(t+dt, ptfm_pos, ptfm_vel, ptfm_acc, forces, out_vals)
-        println("forces")
-        println(forces)
-        println("out_vals")
-        println(out_vals)
+        OpenFASTWrappers.HD_CalcOutput(t+dt, ptfm_pos, ptfm_vel, ptfm_acc, forces, out_vals)
         ptfm_force_ts[idx+1, :] = forces
-        out_vals_ts[idx+1, :] = out_vals
+        out_vals_ts[idx+1, 1] = out_vals[1]
 
         # When coupled to a different code, this is where the Force/Moment info
         # would be passed to the aerodynamic solver.

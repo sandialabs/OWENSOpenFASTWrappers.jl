@@ -413,7 +413,7 @@ function HD_CalcOutput(time, node_pos, node_vel, node_acc, node_force, out_chann
             Ptr{Cint},          # OUT: error_status
             Cstring),      # OUT: error_message
             [time],
-            num_node_pts,
+            Cint(num_node_pts),
             Cfloat.(node_pos),
             Cfloat.(node_vel),
             Cfloat.(node_acc),
@@ -427,14 +427,13 @@ function HD_CalcOutput(time, node_pos, node_vel, node_acc, node_force, out_chann
     else
         error("HydroDyn instance has not been initialized. Use HD_Init() function.")
     end
-
-    return node_force, out_channel_vals
+    # return node_force, out_channel_vals
 end
 
 function HD_UpdateStates(time, next_time, node_pos, node_vel, node_acc; num_node_pts=1)
 
     if hd_active
-
+        
         ccall(hd_sym_updatestates,Cint,
             (Ptr{Cdouble},      # IN: time
             Ptr{Cdouble},       # IN: next_time

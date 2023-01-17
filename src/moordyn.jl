@@ -25,45 +25,46 @@ function MD_Init(mdlib_filename; md_input_file="none", WtrDens=1025, WtrDpth=200
     if md_input_file == "none"
         # TODO specify pts and line type parameters when directly passing variables
         input_string_array = [
-            "--------------------- MoorDyn v2.a8 Input File ------------------------------                                                                                                      ",
-            "Mooring system for OC4-DeepCwind Semi                                                                                                                                              ",
-            "---------------------- LINE TYPES -------------------------------------                                                                                                            ",
-            "TypeName   Diam    Mass/m     EA     BA/-zeta   EI     Cd    Ca   CdAx  CaAx                                                                                                       ",
-            "(-)        (m)     (kg/m)     (N)    (N-s/-)  (N-m^2)  (-)   (-)  (-)   (-)                                                                                                        ",
-            "main     0.0766    113.35   7.536E8   -1.0      0      2.0   0.8  0.4   0.25                                                                                                       ",
-            "------------------------ POINTS ---------------------------------------                                                                                                            ",
-            "PointID Type     X        Y         Z     Mass  Volume  CdA    Ca                                                                                                                  ",
-            "(-)     (-)     (m)      (m)       (m)    (kg)  (m?3)   (m^2)  (-)                                                                                                                 ",
-            "1      Fixed   418.8    725.383  -200.0    0      0      0      0                                                                                                                  ",
-            "2      Fixed  -837.6      0.0    -200.0    0      0      0      0                                                                                                                  ",
-            "3      Fixed   418.8   -725.383  -200.0    0      0      0      0                                                                                                                  ",
-            "4     Coupled   20.434   35.393   -14.0    0      0      0      0                                                                                                                  ",
-            "5     Coupled  -40.868    0.0     -14.0    0      0      0      0                                                                                                                  ",
-            "6     Coupled   20.434  -35.393   -14.0    0      0      0      0                                                                                                                  ",
-            "------------------------ LINES ----------------------------------------                                                                                                            ",
-            "LineID  LineType  UnstrLen   NumSegs  AttachA   AttachB  LineOutputs                                                                                                               ",
-            "(-)       (-)       (m)        (-)    (point#)  (point#)    (-)                                                                                                                    ",
-            "1         main     835.35      20        1         4         -                                                                                                                     ",
-            "2         main     835.35      20        2         5         -                                                                                                                     ",
-            "3         main     835.35      20        3         6         -                                                                                                                     ",
-            "------------------------ OPTIONS ---------------------------------------                                                                                                           ",
-            "0.001    dtM       - time step to use in mooring integration (s)                                                                                                                   ",
-            "3.0e6    kbot      - bottom stiffness (Pa/m)                                                                                                                                       ",
-            "3.0e5    cbot      - bottom damping (Pa-s/m)                                                                                                                                       ",
-            "2.0      dtIC      - time interval for analyzing convergence during IC gen (s)                                                                                                     ",
-            "150.0     TmaxIC    - max time for ic gen (s)                                                                                                                                       ",
-            "4.0      CdScaleIC - factor by which to scale drag coefficients during dynamic relaxation (-)                                                                                      ",
-            "0.01     threshIC  - threshold for IC convergence (-)                                                                                                                              ",
-            "------------------------ OUTPUTS ---------------------------------------                                                                                                           ",
-            "FairTen1                                                                                                                                                                           ",
-            "FairTen2                                                                                                                                                                           ",
-            "FairTen3                                                                                                                                                                           ",
-            "AnchTen1                                                                                                                                                                           ",
-            "AnchTen2                                                                                                                                                                           ",
-            "AnchTen3                                                                                                                                                                           ",
-            "END                                                                                                                                                                                ",
-            "---------------------- need this line ----------------------------------                                                                                                           "
-            ]
+            "--------------------- MoorDyn Input File ------------------------------------",
+            "Mooring system for OC4-DeepCwind Semi",
+            "FALSE    Echo      - echo the input file data (flag)",
+            "----------------------- LINE TYPES ------------------------------------------",
+            "Name     Diam      MassDen       EA    BA/-zeta    EI    Cd      Ca     CdAx   CaAx",
+            "(-)       (m)      (kg/m)        (N)    (N-s/-)    (-)   (-)     (-)    (-)    (-)",
+            "main     0.0766    113.35     7.536E8     -1.0      0    2.0     0.8    0.4    0.25",
+            "---------------------- POINTS --------------------------------",
+            "ID     Attachment  X        Y         Z      M      V       CdA   CA",
+            "(-)    (-)        (m)      (m)       (m)    (kg)   (m^3)   (m^2)  (-)",
+            "1      Fixed    418.8    725.383  -200.0     0       0       0     0",
+            "2      Fixed   -837.6      0.0    -200.0     0       0       0     0",
+            "3      Fixed    418.8   -725.383  -200.0     0       0       0     0",
+            "4      Vessel    20.434   35.393   -14.0     0       0       0     0",
+            "5      Vessel   -40.868    0.0     -14.0     0       0       0     0",
+            "6      Vessel    20.434  -35.393   -14.0     0       0       0     0",
+            "---------------------- LINES --------------------------------------",
+            "ID      LineType   AttachA   AttachB  UnstrLen  NumSegs   Outputs",
+            "(-)       (-)        (-)       (-)       (m)      (-)       (-)",
+            "1         main        1         4       835.35     20        -",
+            "2         main        2         5       835.35     20        -",
+            "3         main        3         6       835.35     20        -",
+            "---------------------- SOLVER OPTIONS ---------------------------------------",
+            "0.001    dtM       - time step to use in mooring integration (s)",
+            "3.0e6    kbot      - bottom stiffness (Pa/m)",
+            "3.0e5    cbot      - bottom damping (Pa-s/m)",
+            "2.0      dtIC      - time interval for analyzing convergence during IC gen (s)",
+            "60.0     TmaxIC    - max time for ic gen (s)",
+            "4.0      CdScaleIC - factor by which to scale drag coefficients during dynamic relaxation (-)",
+            "0.01    threshIC  - threshold for IC convergence (-)",
+            "------------------------ OUTPUTS --------------------------------------------",
+            "FairTen1",
+            "FairTen2",
+            "FairTen3",
+            "AnchTen1",
+            "AnchTen2",
+            "AnchTen3",
+            "END",
+            "------------------------- need this line --------------------------------------",
+        ]
 
     else
         println("Reading MoorDyn data from $md_input_file.")
@@ -82,10 +83,10 @@ function MD_Init(mdlib_filename; md_input_file="none", WtrDens=1025, WtrDpth=200
 
     global mdlib = Libdl.dlopen(mdlib_filename) # Open the library explicitly.
     global md_active = true
-    global md_sym_init = Libdl.dlsym(mdlib, :MD_INIT_C)   # Get a symbol for the function to call.
-    global md_sym_calcoutput = Libdl.dlsym(mdlib, :MD_CALCOUTPUT_C)   # Get a symbol for the function to call.
-    global md_sym_updatestates = Libdl.dlsym(mdlib, :MD_UPDATESTATES_C)
-    global md_sym_end = Libdl.dlsym(mdlib, :MD_END_C) # !!! "c" is capitalized in library, change if errors
+    global md_sym_init = Libdl.dlsym(mdlib, :MD_C_Init)   # Get a symbol for the function to call.
+    global md_sym_calcoutput = Libdl.dlsym(mdlib, :MD_C_CalcOutput)   # Get a symbol for the function to call.
+    global md_sym_updatestates = Libdl.dlsym(mdlib, :MD_C_UpdateStates)
+    global md_sym_end = Libdl.dlsym(mdlib, :MD_C_End) # !!! "c" is capitalized in library, change if errors
     global md_err = MD_Error([0], string(repeat(" ", 1025)))
 
     ccall(md_sym_init,Cint,
@@ -152,20 +153,18 @@ function MD_CalcOutput(time, positions, velocities, accelerations, forces, out_c
 
 end
 
-function MD_UpdateStates(prev_time, curr_time, next_time, positions, velocities, accelerations)
+function MD_UpdateStates(curr_time, next_time, positions, velocities, accelerations)
 
     if md_active
 
         ccall(md_sym_updatestates,Cint,
-            (Ptr{Cdouble},      # IN: prev_time (t-dt)
-            Ptr{Cdouble},       # IN: curr_time (t)
+            (Ptr{Cdouble},       # IN: curr_time (t)
             Ptr{Cdouble},       # IN: next_time (t+dt)
             Ref{Cfloat},        # IN: positions
             Ref{Cfloat},        # IN: velocities
             Ref{Cfloat},        # IN: accelerations
             Ptr{Cint},          # OUT: error_status
             Cstring),           # OUT: error_message
-            [prev_time],
             [curr_time],
             [next_time],
             Cfloat.(positions),
