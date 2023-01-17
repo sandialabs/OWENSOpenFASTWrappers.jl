@@ -36,9 +36,8 @@
       - 'which git || ( apt-get update -y && apt-get install git -y )'
       - 'which cmake || ( apt-get update -y && apt-get install cmake -y )'
       - apt-get install gfortran -y
-      - apt-get install libblas -y
-      - apt-get install liblapack -y
-      - apt-get install libatlas-base-dev -y
+      - apt-get update -y
+      - apt-get install libopenblas-dev -y
       - apt-get install build-essential -y
       - git config --global user.name "${GITLAB_USER_NAME}"
       - git config --global user.email "${GITLAB_USER_EMAIL}"
