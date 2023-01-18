@@ -55,10 +55,13 @@
       - make hydrodyn_c_binding
       - ls
       - pwd
-      - cd ../../
+      - cd modules/inflowwind/
+      - ls
+      - pwd
+      - cd ../../../../
       - pwd
       - ls
-      - julia -e 'using Pkg; Pkg.add(PackageSpec(url=pwd())); Pkg.build("OpenFASTWrappers"); Pkg.test("OpenFASTWrappers";coverage=true)'
+      - julia -e 'pwd(); using Pkg; Pkg.add(PackageSpec(url=pwd())); Pkg.build("OpenFASTWrappers"); Pkg.test("OpenFASTWrappers";coverage=true)'
       # Comment out below if you do not want coverage results.
       - julia -e 'using Pkg; Pkg.add("Coverage");
         import VAWTAero; cd(joinpath(dirname(pathof(VAWTAero)), ".."));

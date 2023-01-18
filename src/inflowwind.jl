@@ -117,7 +117,7 @@ function ifwinit(;inflowlib_filename="$path/../deps/bin/libifw_c_binding",HWindS
     error_message = string(repeat(" ", 1025))
 
 
-    try
+    # try
         println("Attempting to access inflow wind at: $inflowlib_filename")
         global inflowlib = Libdl.dlopen(inflowlib_filename) # Open the library explicitly.
         sym_init = Libdl.dlsym(inflowlib, :IfW_C_Init)   # Get a symbol for the function to call.
@@ -151,11 +151,11 @@ function ifwinit(;inflowlib_filename="$path/../deps/bin/libifw_c_binding",HWindS
                 @warn "Inflow Wind Init Error"
                 println(error_message)
             end
-        catch
-            global backup_Vx = HWindSpeed
-            @warn "inflow wind library is not configured properly, using a steady wind profile [$backup_Vx,0.0,0.0] for Vx, Vy, Vz"
-            global ifw_active = false
-        end
+        # catch
+        #     global backup_Vx = HWindSpeed
+        #     @warn "inflow wind library is not configured properly, using a steady wind profile [$backup_Vx,0.0,0.0] for Vx, Vy, Vz"
+        #     global ifw_active = false
+        # end
 
 end
 
