@@ -254,7 +254,7 @@ function adiInit(adilib_filename, output_root_name;
         global adi_active = false
     end
 
-    return num_channels, channel_names, channel_units
+    return num_channels[1], channel_names, channel_units
 
 end
 
@@ -351,6 +351,7 @@ function adiUpdateStates(time, next_time,
             Ref{Cfloat},        # IN: meshPos 
             Ref{Cdouble},       # IN: meshOrient
             Ref{Cfloat},        # IN: meshVel 
+            Ref{Cfloat},        # IN: meshAcc 
             Ptr{Cint},          # OUT: error_status
             Cstring),           # OUT: error_message 
             [time],
@@ -371,6 +372,7 @@ function adiUpdateStates(time, next_time,
             Cfloat.(meshPos),
             Cdouble.(meshOrient),
             Cfloat.(meshVel),
+            Cfloat.(meshAcc),
             adi_err.error_status,
             adi_err.error_message) 
 
