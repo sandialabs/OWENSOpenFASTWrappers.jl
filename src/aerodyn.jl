@@ -63,7 +63,6 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 
 * `interp_order::int`: optional, interpolation order used internally [1 first order (default), 2 second order]
 
-* `t_initial::float`:   optional, initial time of simulation (default: 0.0)
 * `dt::float64`:        required, timestep for AD15 (needed for setting internal constants)
 * `t_max::float`:       required, total expected simulation time -- used only for setting VTK counter width
 
@@ -104,7 +103,6 @@ function adiInit(adilib_filename, output_root_name;
     initMeshPos        = zeros(numMeshNodes,3),   # initial position vectors of all mesh points
     initMeshOrient     = zeros(numMeshNodes,9),   # initial orientations of all mesh points
     interp_order=1,
-    t_initial=0.0,
     dt=0.01,
     t_max=60.0)
 
@@ -154,7 +152,7 @@ function adiInit(adilib_filename, output_root_name;
     channel_units = string(repeat(" ", 20 * 8000))      # This must match value for MaxADIOutputs in the library
 
     try
-        println("Attempting to access AeroDyn-Inflow at: $adilib_filename")
+        println("Opening AeroDyn-Inflow library at: $adilib_filename")
         global adilib = Libdl.dlopen(adilib_filename) # Open the library explicitly.
         global adi_active = true
 
@@ -182,7 +180,6 @@ function adiInit(adilib_filename, output_root_name;
             Ref{Cfloat},        # IN: MSL2SWL
             Ref{Cint},          # IN: AeroProjMod
             Ref{Cint},          # IN: interp_order
-            Ref{Cdouble},       # IN: t_initial
             Ref{Cdouble},       # IN: dt
             Ref{Cdouble},       # IN: t_max
             Ref{Cint},          # IN: storeHHVel    (c_bool)
@@ -223,7 +220,6 @@ function adiInit(adilib_filename, output_root_name;
             MSL2SWL,
             AeroProjMod,
             interp_order,
-            t_initial,
             dt,
             t_max,
             Cint.(storeHHVel),
