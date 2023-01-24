@@ -47,6 +47,9 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 * `VTKNacDim::Array(float*6)`   optional, Nacelle Dimension for VTK visualization x0,y0,z0,Lx,Ly,Lz (m)
 * `VTKHubRad::float`:   optional, HubRadius for VTK visualization (m)
 
+* `wrOuts::int`:        optional, file format for writing outputs [0 none (default), 1 txt, 2 binary, 3 both]
+* `DT_Outs::float64`:   optional, timestep for outputs to file [0.0 (default) for every timestep]
+
 * `initHubPos::Array(float)`: required, (x,y,z) position of hub
 * `initHubOrient::Array(float)`: required, orientation of hub as 9 element vector of flattened DCM
 
@@ -92,6 +95,8 @@ function adiInit(adilib_filename, output_root_name;
     WrVTK_Type  = 1,          # write VTK files from adi [1 surfaces, 2 lines, 3 both]
     VTKNacDim   = [-1 ,-1 ,-1 ,2 ,2 ,2],        # Nacelle Dimension for VTK visualization x0,y0,z0,Lx,Ly,Lz (m)
     VTKHubRad   = 0.1,                          # HubRadius for VTK visualization (m)
+    wrOuts      = 0,
+    DT_Outs     = 0.0,
     initHubPos         = zeros(3),  # initial position vector of hub
     initHubOrient      = zeros(9),  # initial orientation of hub (flattened 3x3 DCM)
     initNacellePos     = zeros(3),  # initial position vector of nacelle 
@@ -188,6 +193,8 @@ function adiInit(adilib_filename, output_root_name;
             Ref{Cint},          # IN: WrVTK_Type
             Ref{Cfloat},        # IN: VTKNacDim
             Ref{Cfloat},        # IN: VTKHubRad
+            Ref{Cint},          # IN: wrOuts
+            Ref{Cdouble},       # IN: DT_Outs
             Ref{Cfloat},        # IN: initHubPos
             Ref{Cdouble},       # IN: initHubOrient (do we need to flatten this, or just do fortran index order???)
             Ref{Cfloat},        # IN: initNacellePos
@@ -220,14 +227,16 @@ function adiInit(adilib_filename, output_root_name;
             MSL2SWL,
             AeroProjMod,
             interp_order,
-            dt,
-            t_max,
+            Cdouble(dt),
+            Cdouble(t_max),
             Cint.(storeHHVel),
             Cint.(transposeDCM),
             WrVTK,
             WrVTK_Type,
             Cfloat.(VTKNacDim),
             VTKHubRad,
+            wrOuts,
+            Cdouble(DT_Outs),
             Cfloat.(initHubPos),
             Cdouble.(initHubOrient),
             Cfloat.(initNacellePos),
