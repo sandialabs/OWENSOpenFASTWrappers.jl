@@ -2,40 +2,28 @@ import OpenFASTWrappers
 using Test
 path,_ = splitdir(@__FILE__)
 
-@testset "OpenFASTWrappers.jl" begin
+@testset "OpenFASTWrappers.jl inflowwind" begin
     # Usage Example
+    # cd openfast
     # mkdir build
     # cd build
-    # cmake ..
+    # cmake -DBUILD_SHARED_LIBS=ON ..
     # make ifw_c_binding
-    # the the library is located in: deps/bin
+    # openfast/build/modules/inflowwind is where the dynamic library will be
+    # Move the dynamic library to VAWTHydro.jl/bin or a custom location if you specify the path in the call
     turbsim_filename = "$path/data/ifw/test.bts"
-    OpenFASTWrappers.ifwinit(;turbsim_filename)
+    inflowlib_filename = "/builds/8921-VAWT-TOOLS/OpenFASTWrappers.jl/openfast/build/modules/inflowwind/libifw_c_binding"
+    OpenFASTWrappers.ifwinit(;inflowlib_filename,turbsim_filename)
     velocity = OpenFASTWrappers.ifwcalcoutput([0.0,0.0,100.0],0.1)
     println(velocity)
     OpenFASTWrappers.ifwend()
     @test isapprox(velocity,[15.636677, -0.3423329, 0.24170564];atol=1e-4)
+end
 
-    ptfm_pos = [5.0, 0.0, 0.0, 0.0, 0.033161256, 0.0]
-    ptfm_vel = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    ptfm_acc = [-0.024818709, -9.5636366e-05, 0.024033478, 3.4662767e-06, -0.0066289646, -1.1669358e-07]
+@testset "HydroDyn" begin
+    include("hydrodyn_run.jl")
+end
 
-    hd_forces = Vector{Float32}(undef, 6)
-    out_vals = Vector{Float32}(undef, 1)
-    hd_potdir = "$path/data/hd/potflow/marin_semi"
-    OpenFASTWrappers.hdInit(PotFile=hd_potdir, t_initial=0.0, dt=0.0125, t_max=0.0125)
-    hd_forces[:], _ = OpenFASTWrappers.hdCalcOutput(0.0, ptfm_pos, ptfm_vel, ptfm_acc, hd_forces, out_vals)
-    println(hd_forces)
-    OpenFASTWrappers.hdEnd()
-    exp_hd_forces = [658294.5625000, 732.4172974, 45545132.0000000, -24004.8085938, -5331063.5000000, 788.6155396]
-    @test isapprox(hd_forces,exp_hd_forces; rtol=1e-3)
-
-    md_forces = Vector{Float32}(undef, 6)
-    line_tensions = Vector{Float32}(undef, 6)
-    OpenFASTWrappers.mdInit(init_ptfm_pos=ptfm_pos, interp_order=2)
-    md_forces[:], _ = OpenFASTWrappers.mdCalcOutput(0.0, ptfm_pos, ptfm_vel, ptfm_acc, md_forces, line_tensions)
-    println(md_forces)
-    OpenFASTWrappers.mdEnd()
-    exp_md_forces = [-378879.84, 0.35762787, -1.9042124e6, -14.305115, -2.4444795e6, 1.9222498]
-    @test isapprox(md_forces,exp_md_forces; rtol=1e-3)
+@testset "MoorDyn" begin
+    include("moordyn_run.jl")
 end
