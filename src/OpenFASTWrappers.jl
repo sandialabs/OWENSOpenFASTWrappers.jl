@@ -22,5 +22,6 @@ export SolvePtfmLoads
 include("./inflowwind.jl")
 include("./hydrodyn.jl")
 include("./moordyn.jl")
+include("./aerodyn.jl")
 
 end
