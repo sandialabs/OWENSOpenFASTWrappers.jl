@@ -1,27 +1,27 @@
 module OpenFASTWrappers
 import Libdl
+using LinearAlgebra     # for aerodyn cross-product
 
+const path,_ = splitdir(@__FILE__)
+
+# InflowWind
 export ifwinit, ifwcalcoutput, ifwend
 
+# AD15
+export Turbine, Environment, Structure, adiInit, adiCalcOutput, adiUpdateStates, adiEnd
+
 # HydroDyn routines
-export HD_Init
-export HD_CalcOutput
-export HD_UpdateStates
-export HD_End
+export HD_Init, HD_CalcOutput, HD_UpdateStates, HD_End
 
 # MoorDyn routines
-export MD_Init
-export MD_CalcOutput
-export MD_UpdateStates
-export MD_End
+export MD_Init, MD_CalcOutput, MD_UpdateStates, MD_End
 
 # Platform Point Mesh routines
-export SolvePtfmAccels
-export SolvePtfmLoads
+export SolvePtfmAccels, SolvePtfmLoads
 
-include("./inflowwind.jl")
-include("./hydrodyn.jl")
-include("./moordyn.jl")
 include("./aerodyn.jl")
+include("./hydrodyn.jl")
+include("./inflowwind.jl")
+include("./moordyn.jl")
 
 end
