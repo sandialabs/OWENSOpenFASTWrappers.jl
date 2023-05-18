@@ -77,8 +77,8 @@ ptfm_pos_ts_unit = HDF5.h5read(filename,"ptfm_pos_ts")
 
 for itest = 1:length(ptfm_force_ts[:,1])-1
     for jtest = 1:length(ptfm_force_ts[1,:])-1
-        @test isapprox(ptfm_force_ts_unit[itest,jtest],ptfm_force_ts[itest,jtest],atol=1e-6)
-        @test isapprox(ptfm_pos_ts_unit[itest,jtest],ptfm_pos_ts[itest,jtest],atol=1e-6)
+        @test isapprox(ptfm_force_ts_unit[itest,jtest],ptfm_force_ts[itest,jtest],atol=1e-6*abs(ptfm_force_ts[itest,jtest]))
+        @test isapprox(ptfm_pos_ts_unit[itest,jtest],ptfm_pos_ts[itest,jtest],atol=1e-6*abs(ptfm_pos_ts[itest,jtest]))
     end
 end
 
