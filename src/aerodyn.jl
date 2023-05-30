@@ -266,7 +266,7 @@ function adiCalcOutput(time,
                  numMeshNodes,
                  meshPos, meshOrient, meshVel, meshAcc,
                  num_channels)
-    meshFrcMom = zeros(Cfloat,6,numMeshNodes);
+    meshFrcMom = zeros(Cfloat,6*numMeshNodes);
     out_channel_vals = zeros(Cfloat,1,num_channels)
 
     if adi_active
@@ -766,8 +766,15 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
     turbstruct.meshOrient                 = getAD15MeshDCM(turbine,u_j,azi,hubAngle)                                                                            # get orientations of all AD15 blades   (blades + struts in OWENS)
     turbstruct.meshVel,turbstruct.meshAcc = getAD15MeshVelAcc(turbine,turbstruct.meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngle,hubVel,hubAcc)   # get mesh vel/acc of all AD15 blades   (blades + struts in OWENS)
 
+    # hub
+#FIXME: this is not complete.  The hubVel is probably not correctly set.
+    CG2H = calcHubRotMat(hubAngle, -azi)
+    turbstruct.hubPos       = hubPos
+    turbstruct.hubOrient    = vec(CG2H)
+    turbstruct.hubVel       = hubVel
+    turbstruct.hubAcc       = hubAcc
+
 #TODO:  Transfer mesh structural deformation from OWENS, convert to global coords (if needed), and then apply to turbstruct
-#set         turbstruct.hubPos,  turbstruct.hubOrient,  turbstruct.hubVel,  turbstruct.hubAcc,
 #            turbstruct.nacPos,  turbstruct.nacOrient,  turbstruct.nacVel,  turbstruct.nacAcc,
 end
 
@@ -1122,13 +1129,14 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
             MeshAcc[1:3,iNode] = CH2G * uddot_j[idx+1:idx+3]     # translation Acc (m/s^2)
             MeshAcc[4:6,iNode] = CH2G * uddot_j[idx+4:idx+6]     # rotation    Acc (rad/s^2)
 
+#FIXME: missing tangential velocity components due to hub rotational velocity not about hub axis
             ### 2. Tangential velocity due to hub rotation
             # tangential velocity and acceleration, based on distance to hub axis 
-            TanVel = cross(    Omega_rad*hubAxis, (meshPos[1:3,iNode]-hubPos)) / norm(hubAxis)
-            TanAcc = cross( OmegaDot_rad*hubAxis, (meshPos[1:3,iNode]-hubPos)) / norm(hubAxis)
-            MeshVel[1:3,iNode] = MeshVel[1:3,iNode] + TanVel 
+            Vel = cross(    Omega_rad*hubAxis, (meshPos[1:3,iNode]-hubPos)) / norm(hubAxis)
+            Acc = cross( OmegaDot_rad*hubAxis, (meshPos[1:3,iNode]-hubPos)) / norm(hubAxis)
+            MeshVel[1:3,iNode] = MeshVel[1:3,iNode] + Vel
             MeshVel[4:6,iNode] = MeshVel[4:6,iNode] + Omega_rad*hubAxis
-            MeshAcc[1:3,iNode] = MeshAcc[1:3,iNode] + TanAcc
+            MeshAcc[1:3,iNode] = MeshAcc[1:3,iNode] + Acc
             MeshAcc[4:6,iNode] = MeshAcc[4:6,iNode] + OmegaDot_rad*hubAxis
 
             ### 3. add in contributions from hub motion in global coordinates
