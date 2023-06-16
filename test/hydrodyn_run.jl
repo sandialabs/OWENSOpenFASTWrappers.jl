@@ -1,5 +1,4 @@
 # Example usage the Julia wrapper for the HydroDyn DLL
-import Libdl
 import DelimitedFiles
 path = splitdir(@__FILE__)[1]
 import OpenFASTWrappers

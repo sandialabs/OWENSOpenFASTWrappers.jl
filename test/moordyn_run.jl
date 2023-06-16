@@ -1,5 +1,4 @@
 # Example usage the Julia wrapper for the HydroDyn DLL
-import Libdl
 import DelimitedFiles
 import HDF5
 path = splitdir(@__FILE__)[1]

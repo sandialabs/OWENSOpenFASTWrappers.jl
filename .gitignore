@@ -1,4 +1,9 @@
 /Manifest.toml
 *.DS_Store
 *.out
+*.outb
 *.sum
+*.vtk
+*.vtp
+*.ech
+*.vscode
