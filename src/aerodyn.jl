@@ -1421,3 +1421,413 @@ function calcHubRotMat(ptfmRot, azi_j)
     CN2H = CN2P*CP2H
     return CN2H
 end
+
+
+function writeADinputFile(filename="ADInput.dat",blade_filenames=nothing,airfoil_filenames=nothing,OLAF_filename=nothing)
+    
+    OLAF_str = "\"$OLAF_filename\" OLAFInputFileName - Input file for OLAF [used only when WakeMod=3]"
+
+    #TODO: multiple airfoils, other relevant inputs
+    AF_str ="\"$airfoil_filenames\"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
+
+    blades_str = ""
+    for ibld = 1:length(blade_filenames) #includes struts since they are modeled as b
+        if ibld == length(blade_filenames)
+            blades_str =blades_str*"$(blade_filenames[ibld]) ADBlFile($ibld) - Name of file containing distributed aerodynamic properties for Blade #1 (-)"
+        else
+            blades_str =blades_str*"$(blade_filenames[ibld]) ADBlFile($ibld) - Name of file containing distributed aerodynamic properties for Blade #1 (-) \n"
+        end
+
+    end
+
+    input_string_array = 
+"------- AERODYN v15.03.* INPUT FILE ------------------------------------------------
+Generated with OWENS driver
+======  General Options  ============================================================================
+True                   Echo        - Echo the input to \"<rootname>.AD.ech\"?  (flag)
+\"default\"              DTAero      - Time interval for aerodynamic calculations {or \"default\"} (s)
+3                      WakeMod     - Type of wake/induction model (switch) {0=none, 1=BEMT, 2=DBEMT, 3=OLAF}
+#2                      AFAeroMod     - Type of blade airfoil aerodynamics model (switch) {1=steady model, 2=Beddoes-Leishman unsteady model} [must be 1 when linearizing]
+1                      AFAeroMod     - Type of blade airfoil aerodynamics model (switch) {1=steady model, 2=Beddoes-Leishman unsteady model} [must be 1 when linearizing]
+1                      TwrPotent   - Type tower influence on wind based on potential flow around the tower (switch) {0=none, 1=baseline potential flow, 2=potential flow with Bak correction}
+1                      TwrShadow   - Calculate tower influence on wind based on downstream tower shadow? (flag)
+False                  TwrAero     - Calculate tower aerodynamic loads? (flag)
+False                  FrozenWake  - Assume frozen wake during linearization? (flag) [used only when WakeMod=1 and when linearizing]
+False                  CavitCheck  - Perform cavitation check? (flag) TRUE will turn off unsteady aerodynamics
+False                  Buoyancy           - Include buoyancy effects? (flag)
+False                  CompAA      - Flag to compute AeroAcoustics calculation [only used when WakeMod=1 or 2]
+\"AeroAcousticsInput.dat\" AA_InputFile - Aeroacoustics input file
+======  Environmental Conditions  ===================================================================
+1.225                   AirDens     - Air density (kg/m^3)
+1.4639E-05              KinVisc     - Kinematic air viscosity (m^2/s)
+3.350000000000000e+02 SpdSound    - Speed of sound (m/s)
+1.035000000000000e+05 Patm        - Atmospheric pressure (Pa) [used only when CavitCheck=True]
+1.700000000000000e+03 Pvap        - Vapour pressure of fluid (Pa) [used only when CavitCheck=True]
+======  Blade-Element/Momentum Theory Options  ====================================================== [used only when WakeMod=1]
+2                      SkewMod     - Type of skewed-wake correction model (switch) {1=uncoupled, 2=Pitt/Peters, 3=coupled} [used only when WakeMod=1]
+\"default\"              SkewModFactor - Constant used in Pitt/Peters skewed wake model {or \"default\" is 15/32*pi} (-) [used only when SkewMod=2; unused when WakeMod=0]
+True                   TipLoss     - Use the Prandtl tip-loss model? (flag) [used only when WakeMod=1]
+True                   HubLoss     - Use the Prandtl hub-loss model? (flag) [used only when WakeMod=1]
+True                   TanInd      - Include tangential induction in BEMT calculations? (flag) [used only when WakeMod=1]
+True                   AIDrag      - Include the drag term in the axial-induction calculation? (flag) [used only when WakeMod=1]
+True                   TIDrag      - Include the drag term in the tangential-induction calculation? (flag) [used only when WakeMod=1 and TanInd=TRUE]
+\"Default\"              IndToler    - Convergence tolerance for BEMT nonlinear solve residual equation {or \"default\"} (-) [used only when WakeMod=1]
+100                    MaxIter     - Maximum number of iteration steps (-) [used only when WakeMod=1]
+======  Dynamic Blade-Element/Momentum Theory Options  ====================================================== [used only when WakeMod=1]
+1                      DBEMT_Mod   - Type of dynamic BEMT (DBEMT) model {1=constant tau1, 2=time-dependent tau1} (-) [used only when WakeMod=2]
+20                     tau1_const  - Time constant for DBEMT (s) [used only when WakeMod=2 and DBEMT_Mod=1]
+======  OLAF -- cOnvecting LAgrangian Filaments (Free Vortex Wake) Theory Options  ================== [used only when WakeMod=3]
+$OLAF_str
+#\"OLAF-prescr.dat\"               OLAFInputFileName - Input file for OLAF [used only when WakeMod=3]
+======  Beddoes-Leishman Unsteady Airfoil Aerodynamics Options  ===================================== [used only when AFAeroMod=2]
+2                      UAMod       - Unsteady Aero Model Switch (switch) {1=Baseline model (Original), 2=Gonzalez's variant (changes in Cn,Cc,Cm), 3=Minemma/Pierce variant (changes in Cc and Cm)} [used only when AFAeroMod=2]
+True                   FLookup     - Flag to indicate whether a lookup for f' will be calculated (TRUE) or whether best-fit exponential equations will be used (FALSE); if FALSE S1-S4 must be provided in airfoil input files (flag) [used only when AFAeroMod=2]
+======  Airfoil Information =========================================================================
+2                      AFTabMod    - Interpolation method for multiple airfoil tables {1=1D interpolation on AoA (first table only); 2=2D interpolation on AoA and Re; 3=2D interpolation on AoA and UserProp} (-)
+1                      InCol_Alfa  - The column in the airfoil tables that contains the angle of attack (-)
+2                      InCol_Cl    - The column in the airfoil tables that contains the lift coefficient (-)
+3                      InCol_Cd    - The column in the airfoil tables that contains the drag coefficient (-)
+4                      InCol_Cm    - The column in the airfoil tables that contains the pitching-moment coefficient; use zero if there is no Cm column (-)
+0                      InCol_Cpmin - The column in the airfoil tables that contains the Cpmin coefficient; use zero if there is no Cpmin column (-)
+1                      NumAFfiles  - Number of airfoil files used (-)
+$AF_str
+======  Rotor/Blade Properties  =====================================================================
+True                   UseBlCm     - Include aerodynamic pitching moment in calculations?  (flag)
+$blades_str
+======  Hub Properties ============================================================================== [used only when Buoyancy=True]
+0.0   VolHub             - Hub volume (m^3)
+0.0   HubCenBx           - Hub center of buoyancy x direction offset (m)
+======  Nacelle Properties ========================================================================== [used only when Buoyancy=True]
+0.0   VolNac             - Nacelle volume (m^3)
+0,0,0 NacCenB            - Position of nacelle center of buoyancy from yaw bearing in nacelle coordinates (m)
+======  Tail fin Aerodynamics ======================================================================== 
+False         TFinAero           - Calculate tail fin aerodynamics model (flag)
+\"unused\"      TFinFile           - Input file for tail fin aerodynamics [used only when TFinAero=True]
+======  Tower Influence and Aerodynamics ============================================================ [used only when TwrPotent/=0, TwrShadow/=0, TwrAero=True, or Buoyancy=True]
+        3    NumTwrNds         - Number of tower nodes used in the analysis  (-) [used only when TwrPotent/=0, TwrShadow/=0, TwrAero=True, or Buoyancy=True]
+TwrElev        TwrDiam        TwrCd          TwrTI          TwrCb !TwrTI used only with TwrShadow=2, TwrCb used only with Buoyancy=True
+(m)              (m)           (-)            (-)           (-)
+0.00    0.60e+00  1.000e+00  0.1  0.0
+5.00    0.60e+00  1.000e+00  0.1  0.0
+10.00    0.60e+00  1.000e+00  0.1  0.0
+======  Outputs  ====================================================================================
+True                    SumPrint    - Generate a summary file listing input options and interpolated properties to \"<rootname>.AD.sum\"?  (flag)
+0                      NBlOuts     - Number of blade node outputs [0 - 9] (-)
+1, 4, 7, 13, 18, 23, 26, 28, 30 BlOutNd     - Blade nodes whose values will be output  (-)
+0                      NTwOuts     - Number of tower node outputs [0 - 9]  (-)
+1, 2, 6                TwOutNd     - Tower nodes whose values will be output  (-)
+                OutList             - The next line(s) contains a list of output parameters.  See OutListParameters.xlsx for a listing of available output channels, (-)
+\"RtAeroCp\"
+\"RtAeroCq\"
+\"RtAeroCt\"
+\"RtAeroFxh\"
+\"RtAeroFyh\"
+\"RtAeroFzh\"
+\"RtAeroMxh\"
+\"RtAeroMyh\"
+\"RtAeroMzh\"
+\"RtAeroPwr\"
+\"RtAeroFxg\"
+\"RtAeroFyg\"
+\"RtAeroFzg\"
+\"RtAeroMxg\"
+\"RtAeroMyg\"
+\"RtAeroMzg\"
+\"RtArea\"
+\"RtSkew\"
+\"RtSpeed\"
+\"RtTSR\"
+\"RtVAvgxh\"
+\"RtVAvgyh\"
+\"RtVAvgzh\"
+\"B1Pitch\"
+\"B2Pitch\"
+\"B3Pitch\"
+\"B1Azimuth\"
+\"B2Azimuth\"
+\"B3Azimuth\"
+\"B1AeroFx\"
+\"B1AeroFy\"
+\"B1AeroFz\"
+\"B1AeroMx\"
+\"B1AeroMy\"
+\"B1AeroMz\"
+\"B1AeroPwr\"
+\"B1AeroFxg\"
+\"B1AeroFyg\"
+\"B1AeroFzg\"
+\"B1AeroMxg\"
+\"B1AeroMyg\"
+\"B1AeroMzg\"
+\"B2AeroFx\"
+\"B2AeroFy\"
+\"B2AeroFz\"
+\"B2AeroMx\"
+\"B2AeroMy\"
+\"B2AeroMz\"
+\"B2AeroPwr\"
+\"B2AeroFxg\"
+\"B2AeroFyg\"
+\"B2AeroFzg\"
+\"B2AeroMxg\"
+\"B2AeroMyg\"
+\"B2AeroMzg\"
+\"B3AeroFx\"
+\"B3AeroFy\"
+\"B3AeroFz\"
+\"B3AeroMx\"
+\"B3AeroMy\"
+\"B3AeroMz\"
+\"B3AeroPwr\"
+\"B3AeroFxg\"
+\"B3AeroFyg\"
+\"B3AeroFzg\"
+\"B3AeroMxg\"
+\"B3AeroMyg\"
+\"B3AeroMzg\"
+\"B4AeroFx\"
+\"B4AeroFy\"
+\"B4AeroFz\"
+\"B4AeroMx\"
+\"B4AeroMy\"
+\"B4AeroMz\"
+\"B4AeroPwr\"
+\"B4AeroFxg\"
+\"B4AeroFyg\"
+\"B4AeroFzg\"
+\"B4AeroMxg\"
+\"B4AeroMyg\"
+\"B4AeroMzg\"
+END of input file (the word \"END\" must appear in the first 3 columns of this last OutList line)
+====== Outputs for all blade stations (same ending as above for B1N1.... =========================== [optional section]
+9              BldNd_BladesOut     - Number of blades to output all node information at.  Up to number of blades on turbine. (-)
+\"All\"          BldNd_BlOutNd       - Future feature will allow selecting a portion of the nodes to output.  Not implemented yet. (-)
+                OutListAD             - The next line(s) contains a list of output parameters.  See OutListParameters.xlsx for a listing of available output channels, (-)
+Alpha
+Cl
+Cd
+Cm
+Fx
+Fy
+Vx
+Vy
+VUndx
+VUndy
+VUndz
+VDisx
+VDisy
+VDisz
+STVx
+STVy
+STVz
+Vrel
+Vindx
+Vindy
+Gam
+Fn
+Ft
+Cx
+Cy
+Cn
+Ct
+Fl
+Fd
+Mm
+END of input file (the word \"END\" must appear in the first 3 columns of this last OutList line)
+---------------------------------------------------------------------------------------
+"
+    
+    # ifw_input_string = join(input_string_array, "\0")
+    
+    # Save the file
+    open(filename, "w") do file
+        write(file, input_string_array)
+    end
+
+    return input_string_array
+end
+
+function writeADbladeFile(filename="./blade.dat";NumBlNds=10,BlSpn=collect(LinRange(0,12,NumBlNds)),
+    BlCrvAC=zeros(NumBlNds),BlSwpAC=zeros(NumBlNds),BlCrvAng=zeros(NumBlNds),
+    BlTwist=zeros(NumBlNds),BlChord=ones(NumBlNds).*0.5,BlAFID=ones(Int,NumBlNds))
+
+    data_str = ""
+    for inode = 1:NumBlNds #includes struts since they are modeled as blades
+        data_str =data_str*"$(BlSpn[inode]) $(BlCrvAC[inode]) $(BlSwpAC[inode]) $(BlCrvAng[inode]) $(BlTwist[inode]) $(BlChord[inode]) $(BlAFID[inode])	\n"
+    end
+
+    input_string_array = 
+"------- AERODYN v15.00.* BLADE DEFINITION INPUT FILE -------------------------------------						
+Generated with OWENS driver						
+======  Blade Properties =================================================================						
+$NumBlNds   NumBlNds    - Number of blade nodes used in the analysis (-)
+    BlSpn   BlCrvAC  BlSwpAC   BlCrvAng  BlTwist   BlChord   BlAFID						
+    (m)      (m)      (m)      (deg)      (deg)      (m)      (-)						
+$data_str
+"
+    
+    # ifw_input_string = join(input_string_array, "\0")
+    
+    # Save the file
+    open(filename, "w") do file
+        write(file, input_string_array)
+    end
+
+    return input_string_array
+end
+
+function writeOLAFfile(filename="./OLAF.dat";nNWPanel=200,nFWPanels=10)
+    input_string_array = 
+"--------------------------- FREE WAKE INPUT FILE ---------------------------------------------- 
+Free wake input file for the turbine
+--------------------------- GENERAL OPTIONS ---------------------------------------------------
+5             IntMethod     - Integration method {1: RK4, 5: Forward Euler 1st order, default: 5} (switch)
+default       DTfvw         - Time interval for wake propagation. {default: dtaero} (s)
+0.0           FreeWakeStart - Time when wake is free. (-) value = always free. {default: 0.0} (s)
+0.1           FullCircStart - Time at which full circulation is reached. {default: 0.0} (s)
+--------------------------- CIRCULATION SPECIFICATIONS ----------------------------------------
+1             CircSolvingMethod - Circulation solving method {1: Cl-Based, 2: No-Flow Through, 3: Prescribed, default: 1 }(switch)
+default       CircSolvConvCrit - Convergence criteria {default: 0.001} [only if CircSolvingMethod=1] (-)
+default       CircSolvRelaxation - Relaxation factor {default: 0.1} [only if CircSolvingMethod=1] (-)
+default       CircSolvMaxIter - Maximum number of iterations for circulation solving {default: 30} (-)
+\"GammaPrescr.csv\" PrescribedCircFile - File containing prescribed circulation [only if CircSolvingMethod=3] (quoted string)
+===============================================================================================
+--------------------------- WAKE OPTIONS ------------------------------------------------------
+------------------- WAKE EXTENT AND DISCRETIZATION --------------------------------------------
+$nNWPanel           nNWPanel      - Number of near-wake panels (-)
+default nNWPanelsFree      - Number of free near-wake panels (-) {default: nNWPanels}
+$nFWPanels      nFWPanels          - Number of far-wake panels (-) {default: 0}
+default nFWPanelsFree      - Number of free far-wake panels (-) {default: nFWPanels}
+default FWShedVorticity    - Include shed vorticity in the far wake {default: False}
+------------------- WAKE REGULARIZATIONS AND DIFFUSION -----------------------------------------
+0             DiffusionMethod - Diffusion method to account for viscous effects {0: None, 1: Core Spreading, \"default\": 0}
+3             RegDeterMethod - Method to determine the regularization parameters {0: Manual, 1: Optimized, 2: Chord, 3: Span, default: 0 }
+1             RegFunction   - Viscous diffusion function {0: None, 1: Rankine, 2: LambOseen, 3: Vatistas, 4: Denominator, \"default\": 3} (switch)
+3             WakeRegMethod - Wake regularization method {1: Constant, 2: Stretching, 3: Age, default: 1} (switch)
+1.0           WakeRegFactor - Wake regularization factor (m or -)
+1.0           WingRegFactor - Wing regularization factor (m or -)
+2000          CoreSpreadEddyVisc - Eddy viscosity in core spreading methods, typical values 1-1000
+------------------- WAKE TREATMENT OPTIONS ---------------------------------------------------
+True          TwrShadowOnWake - Include tower flow disturbance effects on wake convection {default:false} [only if TwrPotent or TwrShadow]
+0             ShearModel    - Shear Model {0: No treatment, 1: Mirrored vorticity, default: 0}
+------------------- SPEEDUP OPTIONS -----------------------------------------------------------
+1             VelocityMethod - Method to determine the velocity {1:Biot-Savart Segment, 2:Particle tree, default: 1}
+1.5           TreeBranchFactor - Branch radius fraction above which a multipole calculation is used {default: 2.0} [only if VelocityMethod=2]
+1             PartPerSegment - Number of particles per segment [only if VelocityMethod=2]
+===============================================================================================
+--------------------------- OUTPUT OPTIONS  ---------------------------------------------------
+1             WrVTk         - Outputs Visualization Toolkit (VTK) (independent of .fst option) {False: NoVTK, True: Write VTK at each time step} (flag)
+3             nVTKBlades    - Number of blades for which VTK files are exported {0: No VTK per blade, n: VTK for blade 1 to n} (-)
+1             VTKCoord      - Coordinate system used for VTK export. {1: Global, 2: Hub, \"default\": 1}
+\"default\"     VTK_fps       - Frame rate for VTK output (frames per second) {\"all\" for all glue code timesteps, \"default\" for all FVW timesteps} [only if WrVTK=1]
+0             nGridOut      - Number of grid outputs
+GridName	DTOut         - XStart XEnd nX YStart YEnd nY ZStart ZEnd nZ
+(-)  		(s)           - (m) (m) (-) (m) (m) (-) (m) (m) (-)
+\"hori\"    default      -10       30.   400     -70.      70.    150   20   20  1
+\"vert\"    default      -10       30.   400     -0.      0.     1     0    80  100 
+\"vert2\"   default      -10       30.   400     5.      5.     1     5.136    15.136  100 
+===============================================================================================
+"
+    
+    # ifw_input_string = join(input_string_array, "\0")
+    
+    # Save the file
+    open(filename, "w") do file
+        write(file, input_string_array)
+    end
+
+    return input_string_array
+end
+
+function writeIWfile(Vinf,filename = "./AD15-input/IW_test.dat";turbsim_filename=nothing)
+    HWindSpeed_str = "$(round(Vinf,digits=6))   HWindSpeed     - Horizontal windspeed                            (m/s)"
+    turbsim_str = "\"$turbsim_filename\"      filename_bts   - name of the full field wind file to use (.bts)"
+
+    if turbsim_filename!==nothing
+        WindType = 3
+    else
+        WindType = 1
+    end
+
+    input_string_array = 
+"------- InflowWind INPUT FILE -------------------------------------------------------------------------
+Input 
+---------------------------------------------------------------------------------------------------------------
+False         Echo           - Echo input data to <RootName>.ech (flag)
+            $WindType   WindType       - switch for wind file type (1=steady; 2=uniform; 3=binary TurbSim FF; 4=binary Bladed-style FF; 5=HAWC format; 6=User defined; 7=native Bladed FF)
+            0   PropagationDir - Direction of wind propagation (meteorological rotation from aligned with X (positive rotates towards -Y) -- degrees) (not used for native Bladed format WindType=7)
+            0   VFlowAng       - Upflow angle (degrees) (not used for native Bladed format WindType=7)
+        False   VelInterpCubic - Use cubic interpolation for velocity in time (false=linear, true=cubic) [Used with WindType=2,3,4,5,7]
+            1   NWindVel       - Number of points to output the wind velocity    (0 to 9)
+            0   WindVxiList    - List of coordinates in the inertial X direction (m)
+            0   WindVyiList    - List of coordinates in the inertial Y direction (m)
+            50   WindVziList    - List of coordinates in the inertial Z direction (m)
+================== Parameters for Steady Wind Conditions [used only for WindType = 1] =========================
+        $HWindSpeed_str
+            50   RefHt          - Reference height for horizontal wind speed      (m)
+            0   PLExp          - Power law exponent                              (-)
+================== Parameters for Uniform wind file   [used only for WindType = 2] ============================
+\"Elliptic_Wind.wnd\"    FileName_Uni   - Filename of time series data for uniform wind field.      (-)
+        100   RefHt_Uni      - Reference height for horizontal wind speed                (m)
+        125.88   RefLength      - Reference length for linear horizontal and vertical sheer (-)
+================== Parameters for Binary TurbSim Full-Field files   [used only for WindType = 3] ==============
+$turbsim_str
+================== Parameters for Binary Bladed-style Full-Field files   [used only for WindType = 4 or WindType = 7] =========
+\"unused\"      FileNameRoot   - WindType=4: Rootname of the full-field wind file to use (.wnd, .sum); WindType=7: name of the intermediate file with wind scaling values
+False         TowerFile      - Have tower file (.twr) (flag) ignored when WindType = 7
+================== Parameters for HAWC-format binary files  [Only used with WindType = 5] =====================
+\"unused\"      FileName_u     - name of the file containing the u-component fluctuating wind (.bin)
+\"unused\"      FileName_v     - name of the file containing the v-component fluctuating wind (.bin)
+\"unused\"      FileName_w     - name of the file containing the w-component fluctuating wind (.bin)
+            64   nx             - number of grids in the x direction (in the 3 files above) (-)
+            32   ny             - number of grids in the y direction (in the 3 files above) (-)
+            32   nz             - number of grids in the z direction (in the 3 files above) (-)
+            16   dx             - distance (in meters) between points in the x direction    (m)
+            3   dy             - distance (in meters) between points in the y direction    (m)
+            3   dz             - distance (in meters) between points in the z direction    (m)
+        15000   RefHt_Hawc     - reference height; the height (in meters) of the vertical center of the grid (m)
+    -------------   Scaling parameters for turbulence   ---------------------------------------------------------
+            2   ScaleMethod    - Turbulence scaling method   [0 = none, 1 = direct scaling, 2 = calculate scaling factor based on a desired standard deviation]
+            1   SFx            - Turbulence scaling factor for the x direction (-)   [ScaleMethod=1]
+            1   SFy            - Turbulence scaling factor for the y direction (-)   [ScaleMethod=1]
+            1   SFz            - Turbulence scaling factor for the z direction (-)   [ScaleMethod=1]
+        1.2   SigmaFx        - Turbulence standard deviation to calculate scaling from in x direction (m/s)    [ScaleMethod=2]
+        0.8   SigmaFy        - Turbulence standard deviation to calculate scaling from in y direction (m/s)    [ScaleMethod=2]
+        0.2   SigmaFz        - Turbulence standard deviation to calculate scaling from in z direction (m/s)    [ScaleMethod=2]
+    -------------   Mean wind profile parameters (added to HAWC-format files)   ---------------------------------
+            12   URef           - Mean u-component wind speed at the reference height (m/s)
+            2   WindProfile    - Wind profile type (0=constant;1=logarithmic,2=power law)
+        0.2   PLExp_Hawc     - Power law exponent (-) (used for PL wind profile type only)
+        0.03   Z0             - Surface roughness length (m) (used for LG wind profile type only)
+            0   XOffset         - Initial offset in +x direction (shift of wind box)
+================== LIDAR Parameters ===========================================================================
+            0   SensorType          - Switch for lidar configuration (0 = None, 1 = Single Point Beam(s), 2 = Continuous, 3 = Pulsed)
+            0   NumPulseGate        - Number of lidar measurement gates (used when SensorType = 3)
+            30   PulseSpacing        - Distance between range gates (m) (used when SensorType = 3)
+            0   NumBeam             - Number of lidar measurement beams (0-5)(used when SensorType = 1)
+        -200   FocalDistanceX      - Focal distance co-ordinates of the lidar beam in the x direction (relative to hub height) (only first coordinate used for SensorType 2 and 3) (m)
+            0   FocalDistanceY      - Focal distance co-ordinates of the lidar beam in the y direction (relative to hub height) (only first coordinate used for SensorType 2 and 3) (m)
+            0   FocalDistanceZ      - Focal distance co-ordinates of the lidar beam in the z direction (relative to hub height) (only first coordinate used for SensorType 2 and 3) (m)
+0.0 0.0 0.0   RotorApexOffsetPos  - Offset of the lidar from hub height (m)
+            17   URefLid             - Reference average wind speed for the lidar[m/s]
+        0.25   MeasurementInterval - Time between each measurement [s]
+        False   LidRadialVel        - TRUE => return radial component, FALSE => return 'x' direction estimate
+            1   ConsiderHubMotion   - Flag whether to consider the hub motion's impact on Lidar measurements
+====================== OUTPUT ==================================================
+False         SumPrint     - Print summary data to <RootName>.IfW.sum (flag)
+                OutList      - The next line(s) contains a list of output parameters.  See OutListParameters.xlsx for a listing of available output channels, (-)
+\"Wind1VelX\"               X-direction wind velocity at point WindList(1)
+\"Wind1VelY\"               Y-direction wind velocity at point WindList(1)
+\"Wind1VelZ\"               Z-direction wind velocity at point WindList(1)
+END of input file (the word \"END\" must appear in the first 3 columns of this last OutList line)
+---------------------------------------------------------------------------------------"
+       
+    # ifw_input_string = join(input_string_array, "\0")
+    
+    # Save the file
+    open(filename, "w") do file
+        write(file, input_string_array)
+    end
+
+    return input_string_array
+end
