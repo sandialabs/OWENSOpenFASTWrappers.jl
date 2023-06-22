@@ -99,9 +99,9 @@ function adiInit(adilib_filename, output_root_name;
     initNacellePos     = zeros(3),  # initial position vector of nacelle 
     initNacelleOrient  = zeros(9),  # initial orientation of nacelle (flattened 3x3 DCM)
     numTurbines        = 1,         # number of turbines in system
-    numBlades          = 3,         # number of blades in system
-    initRootPos        = zeros(numBlades,3),    # initial root position vectors
-    initRootOrient     = zeros(numBlades,9),    # initial root orientation DCMs
+    numBlades          = [3],         # number of blades in system
+    initRootPos        = zeros(sum(numBlades),3),    # initial root position vectors
+    initRootOrient     = zeros(sum(numBlades),9),    # initial root orientation DCMs
     numMeshNodes       = [1],         # number of mesh points representing structural mesh of rotor
     initMeshPos        = zeros(sum(numMeshNodes),3),   # initial position vectors of all mesh points
     initMeshOrient     = zeros(sum(numMeshNodes),9),   # initial orientations of all mesh points
@@ -241,7 +241,7 @@ function adiInit(adilib_filename, output_root_name;
             Cfloat.(initNacellePos),
             Cdouble.(initNacelleOrient),
             numTurbines,
-            numBlades,
+            Cint.(numBlades),
             Cfloat.(initRootPos),
             Cdouble.(initRootOrient),
             Cint.(numMeshNodes),
@@ -624,7 +624,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     adi_tmax    = 10,                           # end time
     omega       = [0],                            # rad/s
     hubPos      = [0,0,0],                      # m
-    hubAngle    = [0,0,0]                       # rad
+    hubAngle    = [0,0,0],                       # rad
     numTurbines = 1,
     )
 
@@ -673,17 +673,18 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     meshPos = Array{Any}(undef,numTurbines)
     meshOrient = Array{Any}(undef,numTurbines)
 
-    numMeshNodes = zeros(numTurbines)
+    numMeshNodes = zeros(Int,numTurbines)
+    adi_numbl = zeros(Int,numTurbines)
 
     for iturb = 1:numTurbines
 
         # Set up structs for the entire turbine
-        adi_numbl = B[iturb] + B[iturb]*adi_nstrut[iturb]    # Count struts as blades (strut each side of tower counted separately)
+        adi_numbl[iturb] = B[iturb] + B[iturb]*adi_nstrut[iturb]    # Count struts as blades (strut each side of tower counted separately)
         Radius = maximum(bld_x[iturb])
         
         
         numMeshNodes[iturb] = getAD15numMeshNodes(bladeIdx[iturb])
-        turbine[iturb] = Turbine(Radius,omega[iturb],B[iturb],adi_numbl,numMeshNodes[iturb],bladeIdx[iturb],bladeElem[iturb],mymesh[iturb],myort[iturb])
+        turbine[iturb] = Turbine(Radius,omega[iturb],B[iturb],adi_numbl[iturb],numMeshNodes[iturb],bladeIdx[iturb],bladeElem[iturb],mymesh[iturb],myort[iturb])
 
         # Mesh info for ADI
         # set the origin for AD15 at the top of the "tower" (Ht in this setup)
@@ -702,7 +703,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
         # blade roots (2nd is rotated 180 degrees about z)
         rootPos[iturb]     = getRootPos(turbine[iturb],u_j,azi,hubPos[iturb],hubAngle[iturb])       # get root positions of all AD15 blades (blades + struts in OWENS)
-        rootOrient[iturb]  = getRootDCM(turbine[iturb],u_j,azi,hubAngle)              # get orientations of all AD15 blades   (blades + struts in OWENS)
+        rootOrient[iturb]  = getRootDCM(turbine[iturb],u_j,azi,hubAngle[iturb])              # get orientations of all AD15 blades   (blades + struts in OWENS)
 
         # Multiple mesh points along all blades for full structural mesh representation in ADI
         meshPos[iturb]      = getAD15MeshPos(turbine[iturb],u_j,azi,hubPos[iturb],hubAngle[iturb])  # get positions of all AD15 nodes (blades + struts in OWENS)
