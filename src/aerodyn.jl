@@ -28,8 +28,8 @@ function adiPreInit(adilib_filename, numTurbines)
         global adi_active = true
 
         # Get symbols for function calls.
-#        global adi_sym_preinit          = Libdl.dlsym(adilib, :AeroDyn_Inflow_C_PreInit)        # Setup turbine data storage internally
-#        global adi_sym_setuprotor       = Libdl.dlsym(adilib, :AeroDyn_C_SetupRotor)            # Setup for one rotor (initial root positions etc)
+        global adi_sym_preinit          = Libdl.dlsym(adilib, :AeroDyn_Inflow_C_PreInit)        # Setup turbine data storage internally
+        global adi_sym_setuprotor       = Libdl.dlsym(adilib, :AeroDyn_C_SetupRotor)            # Setup for one rotor (initial root positions etc)
 #        global adi_sym_setrotormotion   = Libdl.dlsym(adilib, :AeroDyn_C_SetRotorMotion)        # set motions on one rotor
 #        global adi_sym_getrotorloads    = Libdl.dlsym(adilib, :AeroDyn_C_GetRotorLoads)         # get loads from one rotor
         global adi_sym_init             = Libdl.dlsym(adilib, :AeroDyn_Inflow_C_Init)           # Initialize AeroDyn + InflowWind after rotors setup
@@ -45,18 +45,20 @@ function adiPreInit(adilib_filename, numTurbines)
 
     global adi_abort_error_level = 4
 
-#    try 
-#        ccall(adi_sym_preinit,Cint,
-#            (Ref{Cint}),        # IN: number of turbines to setup ADI for
-#            numTurbines,
-#            adi_err.error_status,
-#            adi_err.error_message)
-#
-#        adi_check_error()
-#    catch
-#        error("AeroDyn-InflowWind library could not initialize turbines")
-#        global adi_active = false
-#    end
+    try 
+        ccall(adi_sym_preinit,Cint,
+            (Ref{Cint},         # IN: number of turbines to setup ADI for
+            Ptr{Cint},          # OUT: error_status
+            Cstring),           # OUT: error_message 
+            numTurbines,
+            adi_err.error_status,
+            adi_err.error_message)
+
+        adi_check_error()
+    catch
+        error("AeroDyn-InflowWind library could not initialize turbines")
+        global adi_active = false
+    end
 end
 
 
@@ -82,27 +84,64 @@ end
 
 """
 function adiSetupRotor(iTurb;
+    initTurbPos        = zeros(3),  # initial turbine position
     initHubPos         = zeros(3),  # initial position vector of hub
     initHubOrient      = zeros(9),  # initial orientation of hub (flattened 3x3 DCM)
     initNacellePos     = zeros(3),  # initial position vector of nacelle 
     initNacelleOrient  = zeros(9),  # initial orientation of nacelle (flattened 3x3 DCM)
-    numBlades          = [3],         # number of blades in system
-    initRootPos        = zeros(sum(numBlades),3),    # initial root position vectors
-    initRootOrient     = zeros(sum(numBlades),9),    # initial root orientation DCMs
-    numMeshNodes       = [1],         # number of mesh points representing structural mesh of rotor
-    initMeshPos        = zeros(sum(numMeshNodes),3),   # initial position vectors of all mesh points
-    initMeshOrient     = zeros(sum(numMeshNodes),9)    # initial orientations of all mesh points
+    numBlades          = 3,         # number of blades in system
+    initRootPos        = zeros(3),  # initial root position vectors
+    initRootOrient     = zeros(9),  # initial root orientation DCMs
+    numMeshNodes       = 1,         # number of mesh points representing structural mesh of rotor
+    initMeshPos        = zeros(3),  # initial position vectors of all mesh points
+    initMeshOrient     = zeros(9)   # initial orientations of all mesh points
     )
+
+    try 
+        ccall(adi_sym_setuprotor,Cint,
+            (Ref{Cint},         # IN: turbine number
+            Ref{Cfloat},        # IN: initTurbPos
+            Ref{Cfloat},        # IN: initHubPos
+            Ref{Cdouble},       # IN: initHubOrient (do we need to flatten this, or just do fortran index order???)
+            Ref{Cfloat},        # IN: initNacellePos
+            Ref{Cdouble},       # IN: initNacelleOrient (do we need to flatten this, or just do fortran index order???)
+            Ref{Cint},          # IN: numBlades
+            Ref{Cfloat},        # IN: initRootPos
+            Ref{Cdouble},       # IN: initRootOrient (do we need to flatten this, or just do fortran index order???)
+            Ref{Cint},          # IN: numMeshNodes
+            Ref{Cfloat},        # IN: initMeshPos
+            Ref{Cdouble},       # IN: initMeshOrient (do we need to flatten this, or just do fortran index order???)
+            Ptr{Cint},          # OUT: error_status
+            Cstring),           # OUT: error_message
+            iTurb,
+            Cfloat.(initTurbPos), 
+            Cfloat.(initHubPos),
+            Cdouble.(initHubOrient),
+            Cfloat.(initNacellePos),
+            Cdouble.(initNacelleOrient),
+            numBlades,
+            Cfloat.(initRootPos),
+            Cdouble.(initRootOrient),
+            numMeshNodes,
+            Cfloat.(initMeshPos),
+            Cdouble.(initMeshOrient),
+            adi_err.error_status,
+            adi_err.error_message)
+
+        adi_check_error()
+    catch
+        error("AeroDyn-InflowWind library could not initialize turbines")
+        global adi_active = false
+    end
+
 end
 
 """
-    adiInit(adilib_filename output_root_name ; )
+    adiInit( output_root_name ; )
 
 calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 
 # Inputs:
-* `adilib_filename::string`: path and name of AeroDyn-Inflow dynamic library
-
 * `ad_input_file_passed::bool`: flag to indicate the AD15 input file is passed as a string
                                 (set to false if passing input file name instead, NOT SUPPORTED YET)
 * `ad_input_file::string`: name of input file for AD15 -- this is read by julia and passed to AD15
@@ -133,21 +172,6 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 * `wrOuts::int`:        optional, file format for writing outputs [0 none (default), 1 txt, 2 binary, 3 both]
 * `DT_Outs::float64`:   optional, timestep for outputs to file [0.0 (default) for every timestep]
 
-* `initHubPos::Array(float)`: required, (x,y,z) position of hub
-* `initHubOrient::Array(float)`: required, orientation of hub as 9 element vector of flattened DCM
-
-* `initNacellePos::Array(float)`: required, (x,y,z) position of nacelle
-* `initNacelleOrient::Array(float)`: required, orientation of nacelle as 9 element vector of flattened DCM
-
-* `numTurbines::int`: required, number of turbines
-* `numBlades::int`: required, number of blades
-* `initRootPos::Array(float)`: required, size (numBlades,3) position vectors of roots
-* `initRootOrient::Array(float)`: required, size (numBlades,9) orientation DCMs flattened to array of 9 element vectors
-
-* `numMeshNodes::Array(int)`: required, number of structural mesh points (total across all blades)
-* `initMeshPos::Array(float)`: required, size (sum(numMeshNodes),3) position vectors of mesh points
-* `initMeshOrient::Array(float)`: required, size (sum(numMeshNodes),9) orientation DCMs flattened to array of 9 element vectors
-
 * `interp_order::int`: optional, interpolation order used internally [1 first order (default), 2 second order]
 
 * `dt::float64`:        required, timestep for AD15 (needed for setting internal constants)
@@ -159,7 +183,7 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 * `channel_units::string`: string of output channel units from ADI
 
 """
-function adiInit(adilib_filename, output_root_name;
+function adiInit(output_root_name;
     ad_input_file_passed= true,
     ad_input_file="none",
     ifw_input_file_passed= true,
@@ -181,18 +205,6 @@ function adiInit(adilib_filename, output_root_name;
     VTKHubRad   = 0.1,                          # HubRadius for VTK visualization (m)
     wrOuts      = 0,
     DT_Outs     = 0.0,
-#FIXME: do these move???? 
-    initHubPos         = zeros(3),  # initial position vector of hub
-    initHubOrient      = zeros(9),  # initial orientation of hub (flattened 3x3 DCM)
-    initNacellePos     = zeros(3),  # initial position vector of nacelle 
-    initNacelleOrient  = zeros(9),  # initial orientation of nacelle (flattened 3x3 DCM)
-    numTurbines        = 1,         # number of turbines in system
-    numBlades          = 3,         # number of blades in system
-    initRootPos        = zeros(numBlades,3),    # initial root position vectors
-    initRootOrient     = zeros(numBlades,9),    # initial root orientation DCMs
-    numMeshNodes       = 1,         # number of mesh points representing structural mesh of rotor
-    initMeshPos        = zeros(numMeshNodes,3),   # initial position vectors of all mesh points
-    initMeshOrient     = zeros(numMeshNodes,9),   # initial orientations of all mesh points
     interp_order=1,
     dt=0.01,
     t_max=60.0)
@@ -241,13 +253,6 @@ function adiInit(adilib_filename, output_root_name;
     channel_units = string(repeat(" ", 20 * 8000))      # This must match value for MaxADIOutputs in the library
 
     try
-        adiPreInit(adilib_filename,numTurbines)
-    catch
-        error("AeroDyn-InflowWind library could not initialize")
-        global adi_active = false
-    end
-
-    try
         ccall(adi_sym_init,Cint,
             (Ref{Cint},         # IN: ad input file passed as string (c_bool)
             Ptr{Ptr{Cchar}},    # IN: ad_input_string_array
@@ -276,17 +281,6 @@ function adiInit(adilib_filename, output_root_name;
             Ref{Cfloat},        # IN: VTKHubRad
             Ref{Cint},          # IN: wrOuts
             Ref{Cdouble},       # IN: DT_Outs
-            Ref{Cfloat},        # IN: initHubPos
-            Ref{Cdouble},       # IN: initHubOrient (do we need to flatten this, or just do fortran index order???)
-            Ref{Cfloat},        # IN: initNacellePos
-            Ref{Cdouble},       # IN: initNacelleOrient (do we need to flatten this, or just do fortran index order???)
-            Ref{Cint},          # IN: numTurbines
-            Ref{Cint},          # IN: numBlades
-            Ref{Cfloat},        # IN: initRootPos
-            Ref{Cdouble},       # IN: initRootOrient (do we need to flatten this, or just do fortran index order???)
-            Ref{Cint},          # IN: numMeshNodes
-            Ref{Cfloat},        # IN: initMeshPos
-            Ref{Cdouble},       # IN: initMeshOrient (do we need to flatten this, or just do fortran index order???)
             Ptr{Cint},          # OUT: num_channels
             Cstring,            # OUT: channel_names
             Cstring,            # OUT: channel_units
@@ -319,24 +313,12 @@ function adiInit(adilib_filename, output_root_name;
             VTKHubRad,
             wrOuts,
             Cdouble(DT_Outs),
-#FIXME: move these to SetupTurb
-            Cfloat.(initHubPos),
-            Cdouble.(initHubOrient),
-            Cfloat.(initNacellePos),
-            Cdouble.(initNacelleOrient),
-            numTurbines,
-            Cint.(numBlades),
-            Cfloat.(initRootPos),
-            Cdouble.(initRootOrient),
-            numMeshNodes,
-            Cfloat.(initMeshPos),
-            Cdouble.(initMeshOrient),
             num_channels,
             channel_names,
             channel_units,
             adi_err.error_status,
             adi_err.error_message)
- 
+
         adi_check_error()
     catch
         error("AeroDyn_Inflow_C_Init failed")
@@ -354,7 +336,7 @@ function adiCalcOutput(time,
                  numMeshNodes,
                  meshPos, meshOrient, meshVel, meshAcc,
                  num_channels)
-    meshFrcMom = zeros(Cfloat,6*numMeshNodes);
+    meshFrcMom = zeros(Cfloat,6*sum(numMeshNodes));
     out_channel_vals = zeros(Cfloat,1,num_channels)
 
     if adi_active
@@ -394,7 +376,7 @@ function adiCalcOutput(time,
             Cdouble.(rootOrient),
             Cfloat.(rootVel),
             Cfloat.(rootAcc),
-            Cint.(numMeshNodes),
+            numMeshNodes[1],
             Cfloat.(meshPos),
             Cdouble.(meshOrient),
             Cfloat.(meshVel),
@@ -457,7 +439,7 @@ function adiUpdateStates(time, next_time,
             Cdouble.(rootOrient),
             Cfloat.(rootVel),
             Cfloat.(rootAcc),
-            Cint.(numMeshNodes),
+            numMeshNodes,
             Cfloat.(meshPos),
             Cdouble.(meshOrient),
             Cfloat.(meshVel),
@@ -524,6 +506,7 @@ NOTE: struts are modeled as blades in AD15 with their root at the hub radius.  I
 # Inputs
 * `R::TF`: Nominal turbine radius (m)
 * `omega::TAF1`: Array of rotational rate corresponding to each azimuthal position, allows for active blade deformation (rad/s)
+* `refPos::TAF2`: turbine reference position
 * `B::TI`: Number of blades
 * `adi_numbl::TI2`: number of adi blades (includes struts)
 * `numMeshNodes::TI3`: number of mesh nodes we are passing motions/loads to/from.  Derived from bladeIdx
@@ -537,9 +520,10 @@ NOTE: struts are modeled as blades in AD15 with their root at the hub radius.  I
 * `none`:
 
 """
-struct Turbine{TF1,TAF1,TI1,TI2,TI3,TAI1,TAI2,TM,TO}
+struct Turbine{TF1,TAF1,TAF2,TI1,TI2,TI3,TAI1,TAI2,TM,TO}
     R::TF1
     omega::TAF1
+    refPos::TAF2
     B::TI1
     adi_numbl::TI2
     numMeshNodes::TI3
@@ -549,7 +533,7 @@ struct Turbine{TF1,TAF1,TI1,TI2,TI3,TAI1,TAI2,TM,TO}
     Ort::TO
 end
 
-#Turbine(R,omega,B,adi_numbl,numMeshNodes,bladeIdx,bladeElem,myort) = Turbine(R,omega,B,adi_numbl,numMeshNodes,bladeIdx,bladeElem,Mesh,Ort)
+#Turbine(R,omega,refPos,B,adi_numbl,numMeshNodes,bladeIdx,bladeElem,myort) = Turbine(R,omega,refPos,B,adi_numbl,numMeshNodes,bladeIdx,bladeElem,Mesh,Ort)
 
 """
 Structure
@@ -706,10 +690,11 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     adi_nstrut  = 2,                            # create_mesh_struts is hard coded for 2 struts per blade
     adi_dt      = 0.05,                         # random default
     adi_tmax    = 10,                           # end time
-    omega       = [0],                            # rad/s
+    omega       = [0],                          # rad/s
     hubPos      = [0,0,0],                      # m
-    hubAngle    = [0,0,0],                       # rad
+    hubAngle    = [0,0,0],                      # rad
     numTurbines = 1,
+    refPos      = [0,0,0],                      # turbine location
     )
 
     # if single inputs, vectorize
@@ -739,48 +724,35 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         etc...")
     end
 
-#FIXME: call to adiSetNumTurbine
+    # load library and set number of turbines
+    try
+        adiPreInit(adi_lib,numTurbines)
+    catch
+        error("AeroDyn-InflowWind library could not initialize")
+        global adi_active = false
+    end
+
 
     global turbine = Array{Turbine}(undef, numTurbines)
-#TODO: understand what this is doing
-    hubVel = Array{Any}(undef,numTurbines)
-    hubAcc = Array{Any}(undef,numTurbines)
-    nacVel = Array{Any}(undef,numTurbines)
-    nacAcc = Array{Any}(undef,numTurbines)
-    rootVel = Array{Any}(undef,numTurbines)
-    rootAcc = Array{Any}(undef,numTurbines)
-    meshVel = Array{Any}(undef,numTurbines)
-    meshAcc = Array{Any}(undef,numTurbines)
-    rootPos = Array{Any}(undef,numTurbines)
-    rootOrient = Array{Any}(undef,numTurbines) 
-    nacPos = Array{Any}(undef,numTurbines)
-    nacOrient = Array{Any}(undef,numTurbines)
-    ADhubPos = Array{Any}(undef,numTurbines)
-    ADhubOrient = Array{Any}(undef,numTurbines)
-    meshPos = Array{Any}(undef,numTurbines)
-    meshOrient = Array{Any}(undef,numTurbines)
-
-    numMeshNodes = zeros(Int,numTurbines)
-    adi_numbl = zeros(Int,numTurbines)
+    global turbstruct = Array{Structure}(undef, numTurbines)
 
     for iturb = 1:numTurbines
 
         # Set up structs for the entire turbine
-        adi_numbl[iturb] = B[iturb] + B[iturb]*adi_nstrut[iturb]    # Count struts as blades (strut each side of tower counted separately)
+        adi_numbl = B[iturb] + B[iturb]*adi_nstrut[iturb]    # Count struts as blades (strut each side of tower counted separately)
         Radius = maximum(bld_x[iturb])
         
-        
-        numMeshNodes[iturb] = getAD15numMeshNodes(bladeIdx[iturb])
-        turbine[iturb] = Turbine(Radius,omega[iturb],B[iturb],adi_numbl[iturb],numMeshNodes[iturb],bladeIdx[iturb],bladeElem[iturb],mymesh[iturb],myort[iturb])
+        numMeshNodes = getAD15numMeshNodes(bladeIdx[iturb])
+        turbine[iturb] = Turbine(Radius,omega[iturb],refPos,B[iturb],adi_numbl,numMeshNodes,bladeIdx[iturb],bladeElem[iturb],mymesh[iturb],myort[iturb])
 
         # Mesh info for ADI
         # set the origin for AD15 at the top of the "tower" (Ht in this setup)
         # nacelle -- not actually used here since we don't consider loads.
-        nacPos[iturb]    = Float32.([hubPos[iturb][1],hubPos[iturb][2],Ht[iturb]])
-        nacOrient[iturb] = Float64.([1,0,0,0,1,0,0,0,1])
+        nacPos    = Float32.([hubPos[iturb][1],hubPos[iturb][2],Ht[iturb]])
+        nacOrient = Float64.([1,0,0,0,1,0,0,0,1])
         # hub -- align to origin for now
-        ADhubPos[iturb]    = Float32.([hubPos[iturb][1],hubPos[iturb][2],Ht[iturb]])
-        ADhubOrient[iturb] = Float64.([1,0,0,0,1,0,0,0,1])
+        hubPos    = Float32.([hubPos[iturb][1],hubPos[iturb][2],Ht[iturb]])
+        hubOrient = Float64.([1,0,0,0,1,0,0,0,1])
 
         # set initial motion to 0
         u_j     = zeros(mymesh[iturb].numNodes*6)
@@ -789,43 +761,57 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         azi     = 0.0
 
         # blade roots (2nd is rotated 180 degrees about z)
-        rootPos[iturb]     = getRootPos(turbine[iturb],u_j,azi,hubPos[iturb],hubAngle[iturb])       # get root positions of all AD15 blades (blades + struts in OWENS)
-        rootOrient[iturb]  = getRootDCM(turbine[iturb],u_j,azi,hubAngle[iturb])              # get orientations of all AD15 blades   (blades + struts in OWENS)
+        rootPos     = getRootPos(turbine[iturb],u_j,azi,hubPos,hubAngle[iturb])       # get root positions of all AD15 blades (blades + struts in OWENS)
+        rootOrient  = getRootDCM(turbine[iturb],u_j,azi,hubAngle[iturb])              # get orientations of all AD15 blades   (blades + struts in OWENS)
 
         # Multiple mesh points along all blades for full structural mesh representation in ADI
-        meshPos[iturb]      = getAD15MeshPos(turbine[iturb],u_j,azi,hubPos[iturb],hubAngle[iturb])  # get positions of all AD15 nodes (blades + struts in OWENS)
-        meshOrient[iturb]   = getAD15MeshDCM(turbine[iturb],u_j,azi,hubAngle[iturb])         # get orientations of all AD15 blades   (blades + struts in OWENS)
+        meshPos      = getAD15MeshPos(turbine[iturb],u_j,azi,hubPos,hubAngle[iturb])  # get positions of all AD15 nodes (blades + struts in OWENS)
+        meshOrient   = getAD15MeshDCM(turbine[iturb],u_j,azi,hubAngle[iturb])         # get orientations of all AD15 blades   (blades + struts in OWENS)
 
 
         # AD15 node velocities/accelerations
         #TODO: If OWENS sets these at initialization, need to transfer values here. 
-        hubVel[iturb]    = zeros(Float32,2*size(ADhubPos[iturb],1))
-        hubAcc[iturb]    = zeros(Float32,2*size(ADhubPos[iturb],1))
-        nacVel[iturb]    = zeros(Float32,2*size(nacPos[iturb],1))
-        nacAcc[iturb]    = zeros(Float32,2*size(nacPos[iturb],1))
-        rootVel[iturb]   = zeros(Float32,2*size(rootPos[iturb],1),size(rootPos[iturb],2))
-        rootAcc[iturb]   = zeros(Float32,2*size(rootPos[iturb],1),size(rootPos[iturb],2))
-        meshVel[iturb]   = zeros(Float32,2*size(meshPos[iturb],1),size(meshPos[iturb],2))
-        meshAcc[iturb]   = zeros(Float32,2*size(meshPos[iturb],1),size(meshPos[iturb],2))
+        hubVel    = zeros(Float32,2*size(hubPos,1))
+        hubAcc    = zeros(Float32,2*size(hubPos,1))
+        nacVel    = zeros(Float32,2*size(nacPos,1))
+        nacAcc    = zeros(Float32,2*size(nacPos,1))
+        rootVel   = zeros(Float32,2*size(rootPos,1),size(rootPos,2))
+        rootAcc   = zeros(Float32,2*size(rootPos,1),size(rootPos,2))
+        meshVel   = zeros(Float32,2*size(meshPos,1),size(meshPos,2))
+        meshAcc   = zeros(Float32,2*size(meshPos,1),size(meshPos,2))
 
-#FIXME: does it make more sense to make turbstruct an array?
-#    global turbstruct[iturb]=Structure(
-#            ADhubPos,  ADhubOrient,  hubVel,  hubAcc,
-#            nacPos,  nacOrient,  nacVel,  nacAcc,
-#            rootPos, rootOrient, rootVel, rootAcc,
-#            meshPos, meshOrient, meshVel, meshAcc,
-#        )
 
-#FIXME: Call SetMotion for this rotor
-#       adiSetRotorMotion(
-#           turbstruct[iturb].hubPos,  turbstruct[iturb].hubOrient,  turbstruct[iturb].hubVel,  turbstruct[iturb].hubAcc,
-#           turbstruct[iturb].nacPos,  turbstruct[iturb].nacOrient,  turbstruct[iturb].nacVel,  turbstruct[iturb].nacAcc,
-#           turbstruct[iturb].rootPos, turbstruct[iturb].rootOrient, turbstruct[iturb].rootVel, turbstruct[iturb].rootAcc,
-#           turbstruct[iturb].numMeshNodes,
-#           turbstruct[iturb].meshPos, turbstruct[iturb].meshOrient, turbstruct[iturb].meshVel, turbstruct[iturb].meshAcc);
+
+        # Initialize outputs and resulting mesh forces
+        try
+            println("iturb: $iturb")
+            adiSetupRotor(iturb;
+                initTurbPos        = refPos,            #FIXME: what should this be?
+                initHubPos         = hubPos,            # 3
+                initHubOrient      = hubOrient,         # 9
+                initNacellePos     = nacPos,            # 3 -- not actually used
+                initNacelleOrient  = nacOrient,         # 9 -- not actually used
+                numBlades          = adi_numbl,
+                initRootPos        = rootPos,           # 3*adi_numbl
+                initRootOrient     = rootOrient,        # 9*adi_numbl
+                numMeshNodes       = numMeshNodes,
+                initMeshPos        = meshPos,           # 3*numMeshNodes
+                initMeshOrient     = meshOrient)        # 9*numMeshNodes
+        catch
+            error("Could not initialize rotor")
+            global adi_active = false
+        end
+
+        turbstruct[iturb]=Structure(
+                hubPos,  hubOrient,  hubVel,  hubAcc,
+                nacPos,  nacOrient,  nacVel,  nacAcc,
+                rootPos, rootOrient, rootVel, rootAcc,
+                meshPos, meshOrient, meshVel, meshAcc,
+            )
+
     end
 
-    num_channels, channel_names, channel_units = adiInit(adi_lib,adi_rootname;
+    num_channels, channel_names, channel_units = adiInit(adi_rootname;
         ad_input_file_passed= false,
         ad_input_file=ad_input_file,
         ifw_input_file_passed= false,
@@ -846,19 +832,6 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         VTKHubRad   = VTKHubRad,
         wrOuts      = adi_wrOuts,
         DT_Outs     = adi_DT_Outs,
-#FIXME: remove these after SetMotionRotor is working
-#FIXME: might need a new adiSetupRotor -- not all turbines will have same number of blades
-        initHubPos         = ADhubPos,          # 3
-        initHubOrient      = ADhubOrient,       # 9
-        initNacellePos     = nacPos,            # 3 -- not actually used
-        initNacelleOrient  = nacOrient,         # 9 -- not actually used
-        numTurbines        = numTurbines,
-        numBlades          = adi_numbl,
-        initRootPos        = rootPos,           # 3*adi_numbl
-        initRootOrient     = rootOrient,        # 9*adi_numbl
-        numMeshNodes       = numMeshNodes,
-        initMeshPos        = meshPos,           # 3*numMeshNodes
-        initMeshOrient     = meshOrient,        # 9*numMeshNodes
         interp_order=1,
         dt=adi_dt,
         t_max=adi_tmax
@@ -868,20 +841,16 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     adi_initialized = true
 
     # store channel info
-#FIXME: does it make more sense to make turbenv an array?
     global turbenv = Environment(rho,adi_dt,num_channels)
 
-    # Store turbine structure info for mesh points here
-#FIXME: does it make more sense to make turbstruct an array?
-    global turbstruct=Structure(
-            ADhubPos,  ADhubOrient,  hubVel,  hubAcc,
-            nacPos,  nacOrient,  nacVel,  nacAcc,
-            rootPos, rootOrient, rootVel, rootAcc,
-            meshPos, meshOrient, meshVel, meshAcc,
-        )
-
-    # Initialize outputs and resulting mesh forces
-    meshFrcMom = zeros(Cfloat,6*sum(numMeshNodes));
+#FIXME: Call SetMotion for this rotor
+#       adiSetRotorMotion(
+#           turbstruct[iturb].hubPos,  turbstruct[iturb].hubOrient,  turbstruct[iturb].hubVel,  turbstruct[iturb].hubAcc,
+#           turbstruct[iturb].nacPos,  turbstruct[iturb].nacOrient,  turbstruct[iturb].nacVel,  turbstruct[iturb].nacAcc,
+#           turbstruct[iturb].rootPos, turbstruct[iturb].rootOrient, turbstruct[iturb].rootVel, turbstruct[iturb].rootAcc,
+#           turbstruct[iturb].numMeshNodes,
+#           turbstruct[iturb].meshPos, turbstruct[iturb].meshOrient, turbstruct[iturb].meshVel, turbstruct[iturb].meshAcc);
+    meshFrcMom = zeros(Cfloat,6*numMeshNodes);
     out_channel_vals = zeros(Cfloat,1,turbenv.num_channels)
     t_initial = 0.0
 
