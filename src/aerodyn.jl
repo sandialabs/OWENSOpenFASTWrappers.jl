@@ -28,14 +28,14 @@ function adiPreInit(adilib_filename, numTurbines)
         global adi_active = true
 
         # Get symbols for function calls.
-        global adi_sym_preinit          = Libdl.dlsym(adilib, :AeroDyn_Inflow_C_PreInit)        # Setup turbine data storage internally
-        global adi_sym_setuprotor       = Libdl.dlsym(adilib, :AeroDyn_C_SetupRotor)            # Setup for one rotor (initial root positions etc)
-        global adi_sym_setrotormotion   = Libdl.dlsym(adilib, :AeroDyn_C_SetRotorMotion)        # set motions on one rotor
-        global adi_sym_getrotorloads    = Libdl.dlsym(adilib, :AeroDyn_C_GetRotorLoads)         # get loads from one rotor
-        global adi_sym_init             = Libdl.dlsym(adilib, :AeroDyn_Inflow_C_Init)           # Initialize AeroDyn + InflowWind after rotors setup
-        global adi_sym_calcoutput       = Libdl.dlsym(adilib, :AeroDyn_Inflow_C_CalcOutput)     # Calculate outputs for given outputs and states
-        global adi_sym_updatestates     = Libdl.dlsym(adilib, :AeroDyn_Inflow_C_UpdateStates)   # Advance to next timestep
-        global adi_sym_end              = Libdl.dlsym(adilib, :AeroDyn_Inflow_C_End)            # !!! "c" is capitalized in library, change if errors
+        global adi_sym_preinit          = Libdl.dlsym(adilib, :ADI_C_PreInit)        # Setup turbine data storage internally
+        global adi_sym_setuprotor       = Libdl.dlsym(adilib, :ADI_C_SetupRotor)            # Setup for one rotor (initial root positions etc)
+        global adi_sym_setrotormotion   = Libdl.dlsym(adilib, :ADI_C_SetRotorMotion)        # set motions on one rotor
+        global adi_sym_getrotorloads    = Libdl.dlsym(adilib, :ADI_C_GetRotorLoads)         # get loads from one rotor
+        global adi_sym_init             = Libdl.dlsym(adilib, :ADI_C_Init)           # Initialize AeroDyn + InflowWind after rotors setup
+        global adi_sym_calcoutput       = Libdl.dlsym(adilib, :ADI_C_CalcOutput)     # Calculate outputs for given outputs and states
+        global adi_sym_updatestates     = Libdl.dlsym(adilib, :ADI_C_UpdateStates)   # Advance to next timestep
+        global adi_sym_end              = Libdl.dlsym(adilib, :ADI_C_End)            # !!! "c" is capitalized in library, change if errors
         global adi_err = adiError([0], string(repeat(" ", 1025)))
     catch
         error("AeroDyn-InflowWind library could not initialize")
