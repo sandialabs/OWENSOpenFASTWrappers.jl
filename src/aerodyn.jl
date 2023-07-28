@@ -9,15 +9,16 @@ mutable struct adiError
 end
 
 """
-    adiPreInit(adilib_filename numTurbines)
+    adiPreInit(adilib_filename numTurbines transposeDCM)
 
 Does some pre-initializing of the ADI library to setup arrays for each turbine
 
 # Inputs:
 * `adilib_filename::string`: path and name of AeroDyn-Inflow dynamic library
 * `numTurbines::int`: required, number of turbines to setup ADI to handle
+* `transposeDCM::int`: required, transpose DCM internally in ADI to match calling code convention for direction cosine matrices (default: 1==true)
 """
-function adiPreInit(adilib_filename, numTurbines)
+function adiPreInit(adilib_filename, numTurbines, transposeDCM)
 
     # Set the error level
     global adi_abort_error_level = 4
@@ -47,9 +48,11 @@ function adiPreInit(adilib_filename, numTurbines)
     try 
         ccall(adi_sym_preinit,Cint,
             (Ref{Cint},         # IN: number of turbines to setup ADI for
+            Ref{Cint},
             Ptr{Cint},          # OUT: error_status
             Cstring),           # OUT: error_message 
             numTurbines,
+            transposeDCM,
             adi_err.error_status,
             adi_err.error_message)
 
@@ -281,10 +284,10 @@ end
 calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 
 # Inputs:
-* `ad_input_file_passed::bool`: flag to indicate the AD15 input file is passed as a string
+* `ad_input_file_passed::int`: flag to indicate the AD15 input file is passed as a string [0=false, 1=true]
                                 (set to false if passing input file name instead, NOT SUPPORTED YET)
 * `ad_input_file::string`: name of input file for AD15 -- this is read by julia and passed to AD15
-* `ifw_input_file_passed::bool`: flag to indicate the InflowWind input file is passed as a string
+* `ifw_input_file_passed::int`: flag to indicate the InflowWind input file is passed as a string [0=false, 1=true]
                                 (set to false if passing input file name instead, NOT SUPPORTED YET)
 * `ifw_input_file::string`: name of input file for InflowWind -- this is read by julia and passed to InflowWind
 
@@ -301,8 +304,7 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 *                               2.      APM_BEM_Polar              "Use staggered polar grid for momentum balance in each annulus"
 *                               3.      APM_LiftingLine            "Use the blade lifting line (i.e. the structural) orientation (currently for OLAF with VAWT)"
 
-* `storeHHVel::bool`:   optional, internal parameter for adi_library.  Exposed for convenience, but not needed.
-* `transposeDCM::bool`: optional, transpose DCM internally in ADI to match calling code convention for direction cosine matrices (default: true)
+* `storeHHVel::int`:   optional, internal parameter for adi_library.  Exposed for convenience, but not needed. [0=false, 1=true]
 * `WrVTK::int`:         optional, write VTK output files at all timesteps to visualize AeroDyn 15 meshes [0 none (default), 1 ref, 2 motion]
 * `WrVTK_Type::int`:    optional, write VTK output files as [1 surfaces (default), 2 lines, 3 both]
 * `VTKNacDim::Array(float*6)`   optional, Nacelle Dimension for VTK visualization x0,y0,z0,Lx,Ly,Lz (m)
@@ -323,9 +325,9 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 
 """
 function adiInit(output_root_name;
-    ad_input_file_passed= true,
+    ad_input_file_passed= 1,
     ad_input_file="none",
-    ifw_input_file_passed= true,
+    ifw_input_file_passed= 0,
     ifw_input_file="none",
     gravity     =   9.80665,  # Gravitational acceleration (m/s^2)
     defFldDens  =     1.225,  # Air density (kg/m^3)
@@ -336,8 +338,7 @@ function adiInit(output_root_name;
     WtrDpth     =       0.0,  # Water depth (m)
     MSL2SWL     =       0.0,  # Offset between still-water level and mean sea level (m) [positive upward]
     AeroProjMod =         1,  # see note
-    storeHHVel  = false, 
-    transposeDCM= true,       # transpose DCM internally for calculations
+    storeHHVel  = 0,          # some internal library stuff we probably don't need to expose [0=false, 1=true]
     WrVTK       = 0,          # write VTK files from adi [0 none, 1 ref, 2 motion]
     WrVTK_Type  = 1,          # write VTK files from adi [1 surfaces, 2 lines, 3 both]
     VTKNacDim   = [-1 ,-1 ,-1 ,2 ,2 ,2],        # Nacelle Dimension for VTK visualization x0,y0,z0,Lx,Ly,Lz (m)
@@ -349,7 +350,7 @@ function adiInit(output_root_name;
     t_max=60.0)
 
     # AeroDyn 15 input file
-    if ad_input_file_passed == false
+    if ad_input_file_passed == 0
         ad_input_string = ad_input_file
     else
         if ad_input_file == "none"
@@ -368,7 +369,7 @@ function adiInit(output_root_name;
 
 
     # InflowWind input file
-    if ifw_input_file_passed == false
+    if ifw_input_file_passed == 0 
         ifw_input_string = ifw_input_file
     else
         if ifw_input_file == "none"
@@ -412,8 +413,7 @@ function adiInit(output_root_name;
             Ref{Cint},          # IN: interp_order
             Ref{Cdouble},       # IN: dt
             Ref{Cdouble},       # IN: t_max
-            Ref{Cint},          # IN: storeHHVel    (c_bool)
-            Ref{Cint},          # IN: transposeDCM  (c_bool)
+            Ref{Cint},          # IN: storeHHVel
             Ref{Cint},          # IN: WrVTK
             Ref{Cint},          # IN: WrVTK_Type
             Ref{Cfloat},        # IN: VTKNacDim
@@ -425,10 +425,10 @@ function adiInit(output_root_name;
             Cstring,            # OUT: channel_units
             Ptr{Cint},          # OUT: error_status
             Cstring),           # OUT: error_message
-            Cint.(ad_input_file_passed),
+            ad_input_file_passed,
             [ad_input_string],
             ad_input_string_length,
-            Cint.(ifw_input_file_passed),
+            ifw_input_file_passed,
             [ifw_input_string],
             ifw_input_string_length,
             output_root_name,
@@ -444,8 +444,7 @@ function adiInit(output_root_name;
             interp_order,
             Cdouble(dt),
             Cdouble(t_max),
-            Cint.(storeHHVel),
-            Cint.(transposeDCM),
+            storeHHVel,
             WrVTK,
             WrVTK_Type,
             Cfloat.(VTKNacDim),
@@ -707,8 +706,8 @@ setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z,B;
     defPvap     =    1700.0,
     WtrDpth     =       0.0,
     MSL2SWL     =       0.0,
-    storeHHVel  = false,
-    transposeDCM= true,
+    storeHHVel  = 0,    #false
+    transposeDCM= 1,    #true
     WrVTK       = 2,
     WrVTK_Type  = 3,
     VTKNacDim   = [-.10 ,-.10 ,-.10 ,.2 ,.2 ,.2],
@@ -767,7 +766,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     defPvap     =    1700.0,  # Vapour pressure of working fluid (Pa) [used only for an MHK turbine cavitation check]
     WtrDpth     =       0.0,  # Water depth (m)
     MSL2SWL     =       0.0,  # Offset between still-water level and mean sea level (m) [positive upward]
-    transposeDCM= true,       # this is default -- how data passed across interface is handled
+    transposeDCM= 1,         # this is default -- how data passed across interface is handled [0=false, 1=true]
     WrVTK       = 2,          # write VTK files from adi to directory adi-vtk [0 none, 1 ref, 2 motion]
     WrVTK_Type  = 3,          # write VTK files from adi to directory adi-vtk [1 surface, 2 lines, 3 both]
     VTKNacDim   = [-.10 ,-.10 ,-.10 ,.2 ,.2 ,.2],        # Nacelle Dimension for VTK visualization x0,y0,z0,Lx,Ly,Lz (m)
@@ -813,7 +812,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
     # load library and set number of turbines
     try
-        adiPreInit(adi_lib,numTurbines)
+        adiPreInit(adi_lib,numTurbines,transposeDCM)
     catch
         error("AeroDyn-InflowWind library could not initialize")
         global adi_active = false
@@ -898,9 +897,9 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     end
 
     num_channels, channel_names, channel_units = adiInit(adi_rootname;
-        ad_input_file_passed= false,
+        ad_input_file_passed= 0,
         ad_input_file=ad_input_file,
-        ifw_input_file_passed= false,
+        ifw_input_file_passed= 0,
         ifw_input_file=ifw_input_file,
         gravity     = gravity,
         defFldDens  = rho,
@@ -911,7 +910,6 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         WtrDpth     = WtrDpth,
         MSL2SWL     = MSL2SWL,
         storeHHVel  = false,    # unused
-        transposeDCM= transposeDCM,
         WrVTK       = WrVTK,
         WrVTK_Type  = WrVTK_Type,
         VTKNacDim   = VTKNacDim,
