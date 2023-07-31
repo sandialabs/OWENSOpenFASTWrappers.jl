@@ -449,7 +449,7 @@ NOTE: struts are modeled as blades in AD15 with their root at the hub radius.  I
 * `none`:
 
 """
-struct Turbine{TF1,TAF1,TI1,TI2,TI3,TAI1,TAI2,TM,TO}
+struct Turbine{TF1,TAF1,TI1,TI2,TI3,TAI1,TAI2,TM,TO,TB}
     R::TF1
     omega::TAF1
     B::TI1
@@ -459,6 +459,7 @@ struct Turbine{TF1,TAF1,TI1,TI2,TI3,TAI1,TAI2,TM,TO}
     bladeElem::TAI2
     Mesh::TM
     Ort::TO
+    isVAWT::TB
 end
 
 #Turbine(R,omega,B,adi_numbl,numMeshNodes,bladeIdx,bladeElem,myort) = Turbine(R,omega,B,adi_numbl,numMeshNodes,bladeIdx,bladeElem,Mesh,Ort)
@@ -618,7 +619,8 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     adi_tmax    = 10,                           # end time
     omega       = 0,                            # rad/s
     hubPos      = [0,0,0],                      # m
-    hubAngle    = [0,0,0]                       # rad
+    hubAngle    = [0,0,0],                       # rad
+    isVAWT      = true
     )
 
     # Set up structs for the entire turbine
@@ -627,7 +629,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     global turbine
     global turbenv
     numMeshNodes = getAD15numMeshNodes(bladeIdx)
-    turbine = Turbine(Radius,omega,B,adi_numbl,numMeshNodes,bladeIdx,bladeElem,mymesh,myort)
+    turbine = Turbine(Radius,omega,B,adi_numbl,numMeshNodes,bladeIdx,bladeElem,mymesh,myort,isVAWT)
 
     # Mesh info for ADI
     # set the origin for AD15 at the top of the "tower" (Ht in this setup)
@@ -768,7 +770,7 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
 
     # hub
 #FIXME: this is not complete.  The hubVel is probably not correctly set.
-    CG2H = calcHubRotMat(hubAngle, -azi)
+    CG2H = calcHubRotMat(turbine,hubAngle, -azi)
     turbstruct.hubPos       = hubPos
     turbstruct.hubOrient    = vec(CG2H)
     turbstruct.hubVel       = hubVel
@@ -818,7 +820,7 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
     Mz = zeros(mesh.numNodes,n_steps)
 
     # conversion to hub coordinates (rotating)
-    CG2H = calcHubRotMat(zeros(3), -azi)
+    CG2H = calcHubRotMat(turbine,zeros(3), -azi)
     step1 = 0 #initialize scope
     for istep = 1:n_steps
 
@@ -919,7 +921,7 @@ Extract the root positions for all ADI blades
 function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
     RootPos     = zeros(Float32,3,turbine.adi_numbl)
     # conversion from hub coordinates to global
-    CG2H = calcHubRotMat(hubAngle, -azi)
+    CG2H = calcHubRotMat(turbine,hubAngle, -azi)
     CH2G = transpose(CG2H)
     # blades
     for ibld = 1:turbine.B
@@ -974,7 +976,11 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     RootAcc     = zeros(Float32,6,turbine.adi_numbl)
     ### 1. calculate relative velocity from mesh distortions
     # conversion from hub coordinates to global
-    CG2H = calcHubRotMat(hubAngle, azi)
+    if turbine.isVAWT
+        CG2H = calcHubRotMat(turbine,hubAngle, azi)
+    else
+        CG2H = calcHubRotMat(turbine,hubAngle, -azi)
+    end
     CH2G = transpose(CG2H)
     # blades
     for ibld = 1:turbine.B
@@ -1007,9 +1013,13 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     end
     ### 2. Tangential velocity due to hub rotation
     # calculate distance of point from hub axis, multiply by Omega_rad for tangential velocity component
-#FIXME: is this correct, or is it CG2H[3,:]???????????
     # hub axis vector in global coordinates
-    hubAxis = CG2H[:,3]
+    if turbine.isVAWT
+        hubAxis = CG2H[:,3]
+    else
+        hubAxis = CG2H[:,1]
+    end
+
     for ibld = 1:size(RootVel,2)
         # Global coordinates
         # tangential velocity and acceleration, based on distance to hub axis 
@@ -1068,7 +1078,7 @@ function getAD15MeshPos(turbine,u_j,azi,hubPos,hubAngle)
     MeshPos     = zeros(Float32,3,turbine.numMeshNodes)
     iNode = 1
     # conversion from hub coordinates to global
-    CG2H = calcHubRotMat(hubAngle, azi)
+    CG2H = calcHubRotMat(turbine,hubAngle, azi)
     CH2G = transpose(CG2H)
     # blades, bottom struts, top struts
     for ibld = 1:size(turbine.bladeIdx,1)
@@ -1115,11 +1125,19 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
     MeshVel     = zeros(Float32,6,turbine.numMeshNodes)
     MeshAcc     = zeros(Float32,6,turbine.numMeshNodes)
     # conversion from hub coordinates to global
-    CG2H = calcHubRotMat(hubAngle, azi)
+    if turbine.isVAWT
+        CG2H = calcHubRotMat(turbine,hubAngle, azi)
+    else
+        CG2H = calcHubRotMat(turbine,hubAngle, -azi)
+    end
     CH2G = transpose(CG2H)
-#FIXME: is this correct, or is it CG2H[3,:]???????????
+
     # hub axis vector in global coordinates
-    hubAxis = CG2H[:,3]
+    if turbine.isVAWT
+        hubAxis = CG2H[:,3]
+    else
+        hubAxis = CG2H[:,1]
+    end
     # blades, bottom struts, top struts
     iNode = 1
     for ibld = 1:size(turbine.bladeIdx,1)
@@ -1182,21 +1200,33 @@ Note on angles
 function getRootDCM(turbine,u_j,azi,hubAngle)
     RootOrient  = zeros(9,turbine.adi_numbl)
     # conversion from hub coordinates to global
-    CG2H = calcHubRotMat(hubAngle, azi)
+    CG2H = calcHubRotMat(turbine,hubAngle, azi)
     CH2G = transpose(CG2H)
+
+
+
     for i=1:size(turbine.bladeElem,1)
         idx=turbine.bladeElem[i]    #,1]
         Psi     = turbine.Ort.Psi_d[idx]    - rad2deg(u_j[(idx-1)*6+4])
         Theta   = turbine.Ort.Theta_d[idx]  - rad2deg(u_j[(idx-1)*6+5])
         Twist   = turbine.Ort.Twist_d[idx]  - rad2deg(u_j[(idx-1)*6+6])
+        
+        if turbine.isVAWT
+            angle_axes = [3,2,1,2]
+            ang1 = [Psi, Theta, Twist, -90]
+            ang2 = [Psi, Theta, Twist,  90]
+        else
+            angle_axes = [2,3,2,1]
+            ang1 = [90, Psi, Theta, Twist]
+            ang2 = [ 90, Psi, Theta, Twist]
+        end
+
         if i<=turbine.B
             #FIME: the following is for a CCW spinning rotor.  some things need changing for a CW spinning rotor.
             # flip +z towards X, then apply Twist (Roll, Rx) -> Theta (Pitch, Ry) -> Psi (Yaw, Rz) 
-            ang = [Psi, Theta, Twist, -90];
-            DCM = CH2G * createGeneralTransformationMatrix(ang,[3,2,1,2]);
+            DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)
         else
-            ang = [Psi, Theta, Twist,  90];
-            DCM = CH2G * transpose(createGeneralTransformationMatrix(ang,[3,2,1,2]));
+            DCM = CH2G * transpose(createGeneralTransformationMatrix(ang2,angle_axes))
         end
         RootOrient[:,i] = transpose(vec(DCM))
     end
@@ -1226,7 +1256,7 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
     #display(turbine.bladeElem)
     MeshOrient  = zeros(9,turbine.numMeshNodes)
     # conversion from hub coordinates to global
-    CG2H = calcHubRotMat(hubAngle, azi)
+    CG2H = calcHubRotMat(turbine,hubAngle, azi)
     CH2G = transpose(CG2H)
     iNode=0
     for ibld=1:size(turbine.bladeElem,1)
@@ -1240,12 +1270,20 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
                 #if idx==turbine.bladeElem[ibld,1]
                 #    @printf("            normal   %i      %7.3f + %7.3f     %7.3f + %7.3f     %7.3f + %7.3f\n", ibld, turbine.Ort.Psi_d[idx], rad2deg(u_j[(idx-1)*6+4]), turbine.Ort.Theta_d[idx], rad2deg(u_j[(idx-1)*6+5]), turbine.Ort.Twist_d[idx], rad2deg(u_j[(idx-1)*6+6]))
                 #end
-                if ibld<=turbine.B
-                    ang = [Psi, Theta, Twist, -90];
-                    DCM = CH2G * createGeneralTransformationMatrix(ang,[3,2,1,2]);
+                if turbine.isVAWT
+                    angle_axes = [3,2,1,2]
+                    ang1 = [Psi, Theta, Twist, -90]
+                    ang2 = [Psi, Theta, Twist,  90]
                 else
-                    ang = [Psi, Theta, Twist,  90];
-                    DCM = CH2G * transpose(createGeneralTransformationMatrix(ang,[3,2,1,2]));
+                    angle_axes = [2,3,2,1]
+                    ang1 = [-90, Psi, Theta, Twist]
+                    ang2 = [ 90, Psi, Theta, Twist]
+                end
+
+                if ibld<=turbine.B
+                    DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes);
+                else
+                    DCM = CH2G * transpose(createGeneralTransformationMatrix(ang2,angle_axes));
                 end
                 iNode += 1
                 MeshOrient[:,iNode] = transpose(vec(DCM))
@@ -1266,12 +1304,19 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
                 #if idx==turbine.bladeElem[ibld,1]
                 #    @printf("            reverse  %i      %7.3f + %7.3f     %7.3f + %7.3f     %7.3f + %7.3f\n", ibld, turbine.Ort.Psi_d[idx], rad2deg(u_j[(idx-1)*6+4]), turbine.Ort.Theta_d[idx], rad2deg(u_j[(idx-1)*6+5]), turbine.Ort.Twist_d[idx], rad2deg(u_j[(idx-1)*6+6]))
                 #end
-                if ibld<=turbine.B
-                    ang = [Psi, Theta, Twist, -90];
-                    DCM = CH2G * createGeneralTransformationMatrix(ang,[3,2,1,2]);
+                if turbine.isVAWT
+                    angle_axes = [3,2,1,2]
+                    ang1 = [Psi, Theta, Twist, -90]
+                    ang2 = [Psi, Theta, Twist,  90]
                 else
-                    ang = [Psi, Theta, Twist,  90];
-                    DCM = CH2G * transpose(createGeneralTransformationMatrix(ang,[3,2,1,2]));
+                    angle_axes = [2,3,2,1]
+                    ang1 = [-90, Psi, Theta, Twist]
+                    ang2 = [ 90, Psi, Theta, Twist]
+                end
+                if ibld<=turbine.B
+                    DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes);
+                else
+                    DCM = CH2G * transpose(createGeneralTransformationMatrix(ang2,angle_axes));
                 end
                 iNode += 1
                 MeshOrient[:,iNode] = transpose(vec(DCM))
@@ -1419,9 +1464,14 @@ function frame_convert(init_frame_vals, trans_mat)
     return out_frame_vals
 end
 
-function calcHubRotMat(ptfmRot, azi_j)
+function calcHubRotMat(turbine,ptfmRot, azi_j)
+    if turbine.isVAWT
+        rot_axis = 3
+    else
+        rot_axis = 1
+    end
     CN2P = transMat(ptfmRot[1], ptfmRot[2], ptfmRot[3])
-    CP2H = [cos(azi_j) sin(azi_j) 0; -sin(azi_j) cos(azi_j) 0;0 0 1]
+    CP2H = createGeneralTransformationMatrix([azi_j*180/pi],[rot_axis])
     CN2H = CN2P*CP2H
     return CN2H
 end
@@ -1453,8 +1503,8 @@ True                   Echo        - Echo the input to \"<rootname>.AD.ech\"?  (
 3                      WakeMod     - Type of wake/induction model (switch) {0=none, 1=BEMT, 2=DBEMT, 3=OLAF}
 #2                      AFAeroMod     - Type of blade airfoil aerodynamics model (switch) {1=steady model, 2=Beddoes-Leishman unsteady model} [must be 1 when linearizing]
 1                      AFAeroMod     - Type of blade airfoil aerodynamics model (switch) {1=steady model, 2=Beddoes-Leishman unsteady model} [must be 1 when linearizing]
-1                      TwrPotent   - Type tower influence on wind based on potential flow around the tower (switch) {0=none, 1=baseline potential flow, 2=potential flow with Bak correction}
-1                      TwrShadow   - Calculate tower influence on wind based on downstream tower shadow? (flag)
+0                      TwrPotent   - Type tower influence on wind based on potential flow around the tower (switch) {0=none, 1=baseline potential flow, 2=potential flow with Bak correction}
+0                      TwrShadow   - Calculate tower influence on wind based on downstream tower shadow? (flag)
 False                  TwrAero     - Calculate tower aerodynamic loads? (flag)
 False                  FrozenWake  - Assume frozen wake during linearization? (flag) [used only when WakeMod=1 and when linearizing]
 False                  CavitCheck  - Perform cavitation check? (flag) TRUE will turn off unsteady aerodynamics
