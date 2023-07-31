@@ -1141,23 +1141,25 @@ function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
         #println("Blade $ibld bottom at [$x,$y,$z] at index $idx")
         RootPos[:,ibld] = CH2G * [x; y; z] + hubPos
     end
-    # bottom strut
-    for ibld = turbine.B+1:2*turbine.B
-        idx=turbine.bladeIdx[ibld,1]
-        x=turbine.Mesh.x[idx] + u_j[(idx-1)*6+1]
-        y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
-        z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
-        #println("Blade strut $ibld bottom at [$x,$y,$z] at index $idx")
-        RootPos[:,ibld] = CH2G * [x; y; z] + hubPos
-    end
-    # top strut
-    for ibld = 2*turbine.B+1:3*turbine.B
-        idx=turbine.bladeIdx[ibld,1]
-        x=turbine.Mesh.x[idx] + u_j[(idx-1)*6+1]
-        y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
-        z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
-        #println("Blade strut $ibld top at [$x,$y,$z] at index $idx")
-        RootPos[:,ibld] = CH2G * [x; y; z] + hubPos
+    if turbine.adi_numbl>turbine.B #i.e. if we have struts TODO: N-struts
+        # bottom strut
+        for ibld = turbine.B+1:2*turbine.B
+            idx=turbine.bladeIdx[ibld,1]
+            x=turbine.Mesh.x[idx] + u_j[(idx-1)*6+1]
+            y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
+            z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
+            #println("Blade strut $ibld bottom at [$x,$y,$z] at index $idx")
+            RootPos[:,ibld] = CH2G * [x; y; z] + hubPos
+        end
+        # top strut
+        for ibld = 2*turbine.B+1:3*turbine.B
+            idx=turbine.bladeIdx[ibld,1]
+            x=turbine.Mesh.x[idx] + u_j[(idx-1)*6+1]
+            y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
+            z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
+            #println("Blade strut $ibld top at [$x,$y,$z] at index $idx")
+            RootPos[:,ibld] = CH2G * [x; y; z] + hubPos
+        end
     end
     return RootPos
 end
@@ -1194,23 +1196,25 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
         RootAcc[1:3,ibld] = CH2G * uddot_j[idx+1:idx+3]         # translation Acc (m/s^2)
         RootAcc[4:6,ibld] = CH2G * uddot_j[idx+4:idx+6]         # rotation    Acc (rad/s^2)
     end
-    # bottom strut
-    for ibld = turbine.B+1:2*turbine.B
-        tmp=turbine.bladeIdx[ibld,1]
-        idx=(tmp-1)*6   # just before the node of interest
-        RootVel[1:3,ibld] = CH2G *  udot_j[idx+1:idx+3]         # translation Vel (m/2)
-        RootVel[4:6,ibld] = CH2G *  udot_j[idx+4:idx+6]         # rotation    Vel (rad/s)
-        RootAcc[1:3,ibld] = CH2G * uddot_j[idx+1:idx+3]         # translation Acc (m/s^2)
-        RootAcc[4:6,ibld] = CH2G * uddot_j[idx+4:idx+6]         # rotation    Acc (rad/s^2)
-    end
-    # top strut
-    for ibld = 2*turbine.B+1:3*turbine.B
-        tmp=turbine.bladeIdx[ibld,1]
-        idx=(tmp-1)*6   # just before the node of interest
-        RootVel[1:3,ibld] = CH2G *  udot_j[idx+1:idx+3]         # translation Vel (m/2)
-        RootVel[4:6,ibld] = CH2G *  udot_j[idx+4:idx+6]         # rotation    Vel (rad/s)
-        RootAcc[1:3,ibld] = CH2G * uddot_j[idx+1:idx+3]         # translation Acc (m/s^2)
-        RootAcc[4:6,ibld] = CH2G * uddot_j[idx+4:idx+6]         # rotation    Acc (rad/s^2)
+    if turbine.adi_numbl>turbine.B # if we have struts, TODO: N-struts
+        # bottom strut
+        for ibld = turbine.B+1:2*turbine.B
+            tmp=turbine.bladeIdx[ibld,1]
+            idx=(tmp-1)*6   # just before the node of interest
+            RootVel[1:3,ibld] = CH2G *  udot_j[idx+1:idx+3]         # translation Vel (m/2)
+            RootVel[4:6,ibld] = CH2G *  udot_j[idx+4:idx+6]         # rotation    Vel (rad/s)
+            RootAcc[1:3,ibld] = CH2G * uddot_j[idx+1:idx+3]         # translation Acc (m/s^2)
+            RootAcc[4:6,ibld] = CH2G * uddot_j[idx+4:idx+6]         # rotation    Acc (rad/s^2)
+        end
+        # top strut
+        for ibld = 2*turbine.B+1:3*turbine.B
+            tmp=turbine.bladeIdx[ibld,1]
+            idx=(tmp-1)*6   # just before the node of interest
+            RootVel[1:3,ibld] = CH2G *  udot_j[idx+1:idx+3]         # translation Vel (m/2)
+            RootVel[4:6,ibld] = CH2G *  udot_j[idx+4:idx+6]         # rotation    Vel (rad/s)
+            RootAcc[1:3,ibld] = CH2G * uddot_j[idx+1:idx+3]         # translation Acc (m/s^2)
+            RootAcc[4:6,ibld] = CH2G * uddot_j[idx+4:idx+6]         # rotation    Acc (rad/s^2)
+        end
     end
     ### 2. Tangential velocity due to hub rotation
     # calculate distance of point from hub axis, multiply by Omega_rad for tangential velocity component
