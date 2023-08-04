@@ -17,7 +17,7 @@ Does some pre-initializing of the ADI library to setup arrays for each turbine
 * `adilib_filename::string`: path and name of AeroDyn-Inflow dynamic library
 * `numTurbines::int`: required, number of turbines to setup ADI to handle
 """
-function adiPreInit(adilib_filename, transposeDCM,numTurbines)
+function adiPreInit(adilib_filename, transposeDCM,numTurbines;adi_debug=0)
 
     # Set the error level
     global adi_abort_error_level = 4
@@ -48,10 +48,12 @@ function adiPreInit(adilib_filename, transposeDCM,numTurbines)
         ccall(adi_sym_preinit,Cint,
             (Ref{Cint},         # IN: number of turbines to setup ADI for
             Ref{Cint},         # IN: transposeDCM flag
+            Ref{Cint},         # IN: adi debug
             Ptr{Cint},          # OUT: error_status
             Cstring),           # OUT: error_message 
             numTurbines,
             transposeDCM,
+            adi_debug,
             adi_err.error_status,
             adi_err.error_message)
 
