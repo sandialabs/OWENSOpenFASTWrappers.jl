@@ -218,8 +218,7 @@ function adiSetRotorMotion(iturb,
                 Cdouble.(rootOrient),
                 Cfloat.(rootVel),
                 Cfloat.(rootAcc),
-#FIXME: check if should be array
-                numMeshNodes[iturb],
+                numMeshNodes,
                 Cfloat.(meshPos),
                 Cdouble.(meshOrient),
                 Cfloat.(meshVel),
@@ -257,12 +256,12 @@ function adiGetRotorLoads(iturb)
     if adi_active
         try
             ccall(adi_sym_getrotorloads,Cint,
-                (Ptr{Cint},         # IN: iturb
-                Ref{Cint},          # IN: numMeshNodes
-                Ptr{Cfloat},        # OUT: node_force
+                (Ref{Cint},         # IN: iturb current turbine number
+                Ref{Cint},          # IN: numMeshNodes -- number of attachment points expected (where motions are transferred into HD)
+                Ptr{Cfloat},        # OUT: meshFrcMom resulting forces/moments array
                 Ptr{Cint},          # OUT: error_status
                 Cstring),           # OUT: error_message 
-                [iturb],
+                iturb,
                 turbine[iturb].numMeshNodes,
                 meshFrcMom,
                 adi_err.error_status,
@@ -273,7 +272,7 @@ function adiGetRotorLoads(iturb)
             return meshFrcMom
 
         catch
-            error("AeroDyn-InflowWind SetRotorMotion could be called")
+            error("AeroDyn-InflowWind adiGetRotorLoads could not be called")
             global adi_active = false
         end
     else
@@ -608,6 +607,7 @@ NOTE: struts are modeled as blades in AD15 with their root at the hub radius.  I
 * `none`:
 
 """
+#FIXME: change refPos to baseOriginInit -- follow AD15 driver naming here.
 struct Turbine{TF1,TAF1,TAF2,TI1,TI2,TI3,TAI1,TAI2,TM,TO}
     R::TF1
     omega::TAF1
@@ -834,15 +834,17 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         
         numMeshNodes = getAD15numMeshNodes(bladeIdx[iturb])
 #FIXME: should we use array of refPos?
-        turbine[iturb] = Turbine(Radius,omega[iturb],refPos,B[iturb],adi_numbl,numMeshNodes,bladeIdx[iturb],bladeElem[iturb],mymesh[iturb],myort[iturb])
+        turbine[iturb] = Turbine(Radius,omega[iturb],refPos[iturb],B[iturb],adi_numbl,numMeshNodes,bladeIdx[iturb],bladeElem[iturb],mymesh[iturb],myort[iturb])
 
         # Mesh info for ADI
         # set the origin for AD15 at the top of the "tower" (Ht in this setup)
+        refPosTmp=Float32.([refPos[iturb][1],refPos[iturb][2],refPos[iturb][3]])
+        println("iturb $(iturb)   refPosTmp $(refPosTmp)")
         # nacelle -- not actually used here since we don't consider loads.
-        nacPos    = Float32.([hubPos[iturb][1],hubPos[iturb][2],Ht[iturb]])
+        nacPosTmp = Float32.([hubPos[iturb][1],hubPos[iturb][2],Ht[iturb]])
         nacOrient = Float64.([1,0,0,0,1,0,0,0,1])
         # hub -- align to origin for now
-        hubPos    = Float32.([hubPos[iturb][1],hubPos[iturb][2],Ht[iturb]])
+        hubPosTmp = Float32.([hubPos[iturb][1],hubPos[iturb][2],Ht[iturb]])
         hubOrient = Float64.([1,0,0,0,1,0,0,0,1])
 
         # set initial motion to 0
@@ -852,20 +854,20 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         azi     = 0.0
 
         # blade roots (2nd is rotated 180 degrees about z)
-        rootPos     = getRootPos(turbine[iturb],u_j,azi,hubPos,hubAngle[iturb])       # get root positions of all AD15 blades (blades + struts in OWENS)
+        rootPos     = getRootPos(turbine[iturb],u_j,azi,hubPosTmp,hubAngle[iturb])       # get root positions of all AD15 blades (blades + struts in OWENS)
         rootOrient  = getRootDCM(turbine[iturb],u_j,azi,hubAngle[iturb])              # get orientations of all AD15 blades   (blades + struts in OWENS)
 
         # Multiple mesh points along all blades for full structural mesh representation in ADI
-        meshPos      = getAD15MeshPos(turbine[iturb],u_j,azi,hubPos,hubAngle[iturb])  # get positions of all AD15 nodes (blades + struts in OWENS)
+        meshPos      = getAD15MeshPos(turbine[iturb],u_j,azi,hubPosTmp,hubAngle[iturb])  # get positions of all AD15 nodes (blades + struts in OWENS)
         meshOrient   = getAD15MeshDCM(turbine[iturb],u_j,azi,hubAngle[iturb])         # get orientations of all AD15 blades   (blades + struts in OWENS)
 
 
         # AD15 node velocities/accelerations
         #TODO: If OWENS sets these at initialization, need to transfer values here. 
-        hubVel    = zeros(Float32,2*size(hubPos,1))
-        hubAcc    = zeros(Float32,2*size(hubPos,1))
-        nacVel    = zeros(Float32,2*size(nacPos,1))
-        nacAcc    = zeros(Float32,2*size(nacPos,1))
+        hubVel    = zeros(Float32,2*size(hubPosTmp,1))
+        hubAcc    = zeros(Float32,2*size(hubPosTmp,1))
+        nacVel    = zeros(Float32,2*size(nacPosTmp,1))
+        nacAcc    = zeros(Float32,2*size(nacPosTmp,1))
         rootVel   = zeros(Float32,2*size(rootPos,1),size(rootPos,2))
         rootAcc   = zeros(Float32,2*size(rootPos,1),size(rootPos,2))
         meshVel   = zeros(Float32,2*size(meshPos,1),size(meshPos,2))
@@ -876,10 +878,10 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         # Initialize outputs and resulting mesh forces
         try
             adiSetupRotor(iturb;
-                initTurbPos        = refPos,            #FIXME: what should this be?
-                initHubPos         = hubPos,            # 3
+                initTurbPos        = refPos[iturb],     #
+                initHubPos         = hubPosTmp,         # 3
                 initHubOrient      = hubOrient,         # 9
-                initNacellePos     = nacPos,            # 3 -- not actually used
+                initNacellePos     = nacPosTmp,            # 3 -- not actually used
                 initNacelleOrient  = nacOrient,         # 9 -- not actually used
                 numBlades          = adi_numbl,
                 initRootPos        = rootPos,           # 3*adi_numbl
@@ -892,11 +894,12 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
             global adi_active = false
         end
 
+#FIXME: move refPos shift into setRotorMotion and SetupTurb
         turbstruct[iturb]=Structure(
-                hubPos,  hubOrient,  hubVel,  hubAcc,
-                nacPos,  nacOrient,  nacVel,  nacAcc,
-                rootPos, rootOrient, rootVel, rootAcc,
-                meshPos, meshOrient, meshVel, meshAcc,
+                hubPosTmp+refPosTmp,  hubOrient,  hubVel,  hubAcc,
+                nacPosTmp+refPosTmp,  nacOrient,  nacVel,  nacAcc,
+                rootPos.+refPosTmp,   rootOrient, rootVel, rootAcc,
+                meshPos.+refPosTmp,   meshOrient, meshVel, meshAcc,
             )
 
     end
@@ -934,6 +937,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
     # Set the motions for each turbine
     for iturb = 1:numTurbines
+        println("--------------- setup turbine $iturb -----------------")
         setRotorMotion(iturb)
     end
     t_initial = 0.0
@@ -944,9 +948,9 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
     #TODO: if loads are required from init
     # Loads from ADI
-    for iturb = 1:numTurbines
-        meshFrcMom[iturb] = adiGetRotorLoads(iturb)
-    end
+    #for iturb = 1:numTurbines
+    #    meshFrcMom[iturb] = adiGetRotorLoads(iturb)
+    #end
 
 end
 
@@ -1005,22 +1009,22 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
     for iturb = 1:numTurbines
 
         # Root
-        turbstruct[iturb].rootPos                    = getRootPos(turbine[iturb],u_j,azi,hubPos,hubAngle)
-        turbstruct[iturb].rootOrient                 = getRootDCM(turbine[iturb],u_j,azi,hubAngle)
-        turbstruct[iturb].rootVel,turbstruct[iturb].rootAcc = getRootVelAcc(turbine[iturb],turbstruct[iturb].rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngle,hubVel,hubAcc)
+        turbstruct[iturb].rootPos                    = getRootPos(turbine[iturb],u_j[iturb],azi[iturb],hubPos[iturb],hubAngle[iturb])                                                                         # get root positions of all AD15 blades (blades + struts in OWENS)
+        turbstruct[iturb].rootOrient                 = getRootDCM(turbine[iturb],u_j[iturb],azi[iturb],hubAngle[iturb])                                                                                # get orientations of all AD15 blades   (blades + struts in OWENS)
+        turbstruct[iturb].rootVel,turbstruct[iturb].rootAcc = getRootVelAcc(turbine[iturb],turbstruct[iturb].rootPos,udot_j[iturb],uddot_j[iturb],azi[iturb],Omega_rad[iturb],OmegaDot_rad[iturb],hubPos[iturb],hubAngle[iturb],hubVel[iturb],hubAcc[iturb])       # get root vel/acc of all AD15 blades   (blades + struts in OWENS)
 
         # Mesh
-        turbstruct[iturb].meshPos                    = getAD15MeshPos(turbine[iturb],u_j,azi,hubPos,hubAngle)
-        turbstruct[iturb].meshOrient                 = getAD15MeshDCM(turbine[iturb],u_j,azi,hubAngle)
-        turbstruct[iturb].meshVel,turbstruct[iturb].meshAcc = getAD15MeshVelAcc(turbine[iturb],turbstruct[iturb].meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngle,hubVel,hubAcc)
+        turbstruct[iturb].meshPos                    = getAD15MeshPos(turbine[iturb],u_j[iturb],azi[iturb],hubPos[iturb],hubAngle[iturb])                                                                     # get mesh positions of all AD15 blades (blades + struts in OWENS)
+        turbstruct[iturb].meshOrient                 = getAD15MeshDCM(turbine[iturb],u_j[iturb],azi[iturb],hubAngle[iturb])                                                                            # get orientations of all AD15 blades   (blades + struts in OWENS)
+        turbstruct[iturb].meshVel,turbstruct[iturb].meshAcc = getAD15MeshVelAcc(turbine[iturb],turbstruct[iturb].meshPos,udot_j[iturb],uddot_j[iturb],azi[iturb],Omega_rad[iturb],OmegaDot_rad[iturb],hubPos[iturb],hubAngle[iturb],hubVel[iturb],hubAcc[iturb])   # get mesh vel/acc of all AD15 blades   (blades + struts in OWENS)
 
         # hub
-        #FIXME: this is not complete.  The hubVel is probably not correctly set (it ignores platform/tower motion).
-        CG2H = calcHubRotMat(hubAngle, -azi)
-        turbstruct[iturb].hubPos       = hubPos
+        #FIXME: this is not complete.  The hubVel is probably not correctly set.
+        CG2H = calcHubRotMat(hubAngle[iturb], -azi[iturb])
+        turbstruct[iturb].hubPos       = hubPos[iturb]
         turbstruct[iturb].hubOrient    = vec(CG2H)
-        turbstruct[iturb].hubVel       = hubVel
-        turbstruct[iturb].hubAcc       = hubAcc
+        turbstruct[iturb].hubVel       = hubVel[iturb]
+        turbstruct[iturb].hubAcc       = hubAcc[iturb]
 
         # Nacelle   FIXME: add this later
 
@@ -1066,11 +1070,6 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
     global turbstruct
     global dt
     dt = turbenv.dt
-    numMeshNodes = [turbine[iturb].numMeshNodes for iturb=1:length(turbine)]
-
-    if length(azi) == 1
-        azi = [azi]
-    end
 
     n_steps=1   # hard code for now
     numTurbines = length(turbine)
@@ -1082,14 +1081,13 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
     Mx = Array{Matrix{Float64}}(undef, numTurbines)
     My = Array{Matrix{Float64}}(undef, numTurbines)
     Mz = Array{Matrix{Float64}}(undef, numTurbines)
-#FIXME: mesh will be an array.  Requires revision to the OWENS_unsteady_multi
     for iturb = 1:numTurbines
-        Fx[iturb] = zeros(mesh.numNodes,n_steps) #zeros(mesh[iturb].numNodes,n_steps)
-        Fy[iturb] = zeros(mesh.numNodes,n_steps) #zeros(mesh[iturb].numNodes,n_steps)
-        Fz[iturb] = zeros(mesh.numNodes,n_steps) #zeros(mesh[iturb].numNodes,n_steps)
-        Mx[iturb] = zeros(mesh.numNodes,n_steps) #zeros(mesh[iturb].numNodes,n_steps)
-        My[iturb] = zeros(mesh.numNodes,n_steps) #zeros(mesh[iturb].numNodes,n_steps)
-        Mz[iturb] = zeros(mesh.numNodes,n_steps) #zeros(mesh[iturb].numNodes,n_steps)
+        Fx[iturb] = zeros(mesh[iturb].numNodes,n_steps) #zeros(mesh[iturb].numNodes,n_steps)
+        Fy[iturb] = zeros(mesh[iturb].numNodes,n_steps) #zeros(mesh[iturb].numNodes,n_steps)
+        Fz[iturb] = zeros(mesh[iturb].numNodes,n_steps) #zeros(mesh[iturb].numNodes,n_steps)
+        Mx[iturb] = zeros(mesh[iturb].numNodes,n_steps) #zeros(mesh[iturb].numNodes,n_steps)
+        My[iturb] = zeros(mesh[iturb].numNodes,n_steps) #zeros(mesh[iturb].numNodes,n_steps)
+        Mz[iturb] = zeros(mesh[iturb].numNodes,n_steps) #zeros(mesh[iturb].numNodes,n_steps)
     end
 
     # conversion to hub coordinates (rotating)
@@ -1146,7 +1144,7 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
 
             # convert to hub rotating coordinates with azimuth angle
             #   There is undoubtedly a much more elegant way to do this
-            for iNode=1:mesh.numNodes
+            for iNode=1:mesh[iturb].numNodes
                 FMg = [Fx[iturb][iNode] Fy[iturb][iNode] Fz[iturb][iNode] Mx[iturb][iNode] My[iturb][iNode] Mz[iturb][iNode]]
                 FM = frame_convert(FMg, CG2H)
                 Fx[iturb][iNode,istep] = FM[1]
