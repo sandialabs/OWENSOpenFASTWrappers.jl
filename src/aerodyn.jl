@@ -18,7 +18,7 @@ Does some pre-initializing of the ADI library to setup arrays for each turbine
 * `numTurbines::int`: required, number of turbines to setup ADI to handle
 * `transposeDCM::int`: required, transpose DCM internally in ADI to match calling code convention for direction cosine matrices (default: 1==true)
 """
-function adiPreInit(adilib_filename, numTurbines, transposeDCM)
+function adiPreInit(adilib_filename, numTurbines, transposeDCM, adiDebug)
 
     # Set the error level
     global adi_abort_error_level = 4
@@ -48,11 +48,13 @@ function adiPreInit(adilib_filename, numTurbines, transposeDCM)
     try 
         ccall(adi_sym_preinit,Cint,
             (Ref{Cint},         # IN: number of turbines to setup ADI for
-            Ref{Cint},         # IN: transposeDCM flag
+            Ref{Cint},          # IN: transposeDCM flag
+            Ref{Cint},          # IN: adiDebug
             Ptr{Cint},          # OUT: error_status
             Cstring),           # OUT: error_message 
             numTurbines,
             transposeDCM,
+            adiDebug,
             adi_err.error_status,
             adi_err.error_message)
 
@@ -227,7 +229,7 @@ function adiSetRotorMotion(iturb,
  
             adi_check_error()
         catch
-            error("AeroDyn-InflowWind SetRotorMotion could be called")
+            error("AeroDyn-InflowWind SetRotorMotion could not be called")
             global adi_active = false
         end
     else
@@ -781,6 +783,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     hubAngle    = [0,0,0],                      # rad
     numTurbines = 1,
     refPos      = [0,0,0],                      # turbine location
+    adiDebug    = 0
     )
 
     # if single inputs, vectorize
@@ -798,6 +801,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         Ht = [Ht]
         hubPos = [hubPos]
         hubAngle = [hubAngle]
+        refPos=[refPos]
     
     elseif typeof(B)!=Vector{Int64}
         error("The following inputs must be vectors of size numTurbines: 
@@ -812,7 +816,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
     # load library and set number of turbines
     try
-        adiPreInit(adi_lib,numTurbines,transposeDCM)
+        adiPreInit(adi_lib,numTurbines,transposeDCM,adiDebug)
     catch
         error("AeroDyn-InflowWind library could not initialize")
         global adi_active = false
