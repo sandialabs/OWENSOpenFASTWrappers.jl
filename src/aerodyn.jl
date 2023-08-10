@@ -783,6 +783,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     numTurbines = 1,
     refPos      = [[0,0,0]],                      # turbine location
     adi_debug   = 0,                              #0 is no debug outputs
+    nacPos      = [[0,0,0]],                      # m
     )
 
     # load library and set number of turbines
@@ -804,18 +805,16 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         Radius = maximum(bld_x[iturb])
         
         numMeshNodes = getAD15numMeshNodes(bladeIdx[iturb])
-#FIXME: should we use array of refPos?
         turbine[iturb] = Turbine(Radius,omega[iturb],refPos[iturb],B[iturb],adi_numbl,numMeshNodes,bladeIdx[iturb],bladeElem[iturb],mymesh[iturb],myort[iturb])
 
         # Mesh info for ADI
         # set the origin for AD15 at the top of the "tower" (Ht in this setup)
-        refPosTmp=Float32.([refPos[iturb][1],refPos[iturb][2],refPos[iturb][3]])
-        println("iturb $(iturb)   refPosTmp $(refPosTmp)")
+        refPosTmp=Float32.(refPos[iturb][1:3])
         # nacelle -- not actually used here since we don't consider loads.
-        nacPosTmp = Float32.([hubPos[iturb][1],hubPos[iturb][2],Ht[iturb]])
+        nacPosTmp = Float32.(nacPos[iturb][1:3])
         nacOrient = Float64.([1,0,0,0,1,0,0,0,1])
         # hub -- align to origin for now
-        hubPosTmp = Float32.([hubPos[iturb][1],hubPos[iturb][2],Ht[iturb]])
+        hubPosTmp = Float32.(hubPos[iturb][1:3])
         hubOrient = Float64.([1,0,0,0,1,0,0,0,1])
 
         # set initial motion to 0
@@ -1000,9 +999,9 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
         #            turbstruct.nacPos,  turbstruct.nacOrient,  turbstruct.nacVel,  turbstruct.nacAcc,
 
         # Shift all positions by the RefPos for the turbine to get global position
-        turbstruct[iturb].rootPos =  turbstruct[iturb].rootPos .+ turbine[iturb].refPos
-        turbstruct[iturb].meshPos =  turbstruct[iturb].meshPos .+ turbine[iturb].refPos
-        turbstruct[iturb].hubPos  =  turbstruct[iturb].hubPos  .+ turbine[iturb].refPos
+        turbstruct[iturb].rootPos =  turbstruct[iturb].rootPos
+        turbstruct[iturb].meshPos =  turbstruct[iturb].meshPos
+        turbstruct[iturb].hubPos  =  turbstruct[iturb].hubPos
 
         # Set the motions for each turbine (passed in global values)
         setRotorMotion(iturb)
@@ -1162,7 +1161,7 @@ function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
         y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
         z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
         #println("Blade $ibld bottom at [$x,$y,$z] at index $idx")
-        RootPos[:,ibld] = CH2G * [x; y; z] + hubPos
+        RootPos[:,ibld] = CH2G * [x; y; z]
     end
     if turbine.adi_numbl>turbine.B #i.e. if we have struts TODO: N-struts
         # bottom strut
@@ -1172,7 +1171,7 @@ function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
             y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
             z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
             #println("Blade strut $ibld bottom at [$x,$y,$z] at index $idx")
-            RootPos[:,ibld] = CH2G * [x; y; z] + hubPos
+            RootPos[:,ibld] = CH2G * [x; y; z]
         end
         # top strut
         for ibld = 2*turbine.B+1:3*turbine.B
@@ -1181,7 +1180,7 @@ function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
             y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
             z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
             #println("Blade strut $ibld top at [$x,$y,$z] at index $idx")
-            RootPos[:,ibld] = CH2G * [x; y; z] + hubPos
+            RootPos[:,ibld] = CH2G * [x; y; z]
         end
     end
     return RootPos
@@ -1314,7 +1313,7 @@ function getAD15MeshPos(turbine,u_j,azi,hubPos,hubAngle)
             y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
             z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
             #println("Blade $ibld at [$x,$y,$z], node $idx")
-            MeshPos[:,iNode] = CH2G * [x; y; z] + hubPos
+            MeshPos[:,iNode] = CH2G * [x; y; z]
             iNode += 1
         end
     end
