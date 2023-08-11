@@ -815,7 +815,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         nacOrient = Float64.([1,0,0,0,1,0,0,0,1])
         # hub -- align to origin for now
         hubPosTmp = Float32.(hubPos[iturb][1:3])
-        hubOrient = Float64.([1,0,0,0,1,0,0,0,1])
+        # hubOrient = Float64.([1,0,0,0,1,0,0,0,1])
 
         # set initial motion to 0
         u_j     = zeros(mymesh[iturb].numNodes*6)
@@ -838,12 +838,20 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         hubAcc    = zeros(Float32,2*size(hubPosTmp,1))
         nacVel    = zeros(Float32,2*size(nacPosTmp,1))
         nacAcc    = zeros(Float32,2*size(nacPosTmp,1))
-        rootVel   = zeros(Float32,2*size(rootPos,1),size(rootPos,2))
-        rootAcc   = zeros(Float32,2*size(rootPos,1),size(rootPos,2))
-        meshVel   = zeros(Float32,2*size(meshPos,1),size(meshPos,2))
-        meshAcc   = zeros(Float32,2*size(meshPos,1),size(meshPos,2))
+        # rootVel   = zeros(Float32,2*size(rootPos,1),size(rootPos,2))
+        # rootAcc   = zeros(Float32,2*size(rootPos,1),size(rootPos,2))
+        # meshVel   = zeros(Float32,2*size(meshPos,1),size(meshPos,2))
+        # meshAcc   = zeros(Float32,2*size(meshPos,1),size(meshPos,2))
 
+              
+        rootVel,rootAcc = getRootVelAcc(turbine[iturb],rootPos,udot_j,uddot_j,azi,omega[iturb],zero(omega[iturb]),hubPosTmp,hubAngle[iturb],hubVel,hubAcc)       # get root vel/acc of all AD15 blades   (blades + struts in OWENS)
 
+        meshVel,meshAcc = getAD15MeshVelAcc(turbine[iturb],meshPos,udot_j,uddot_j,azi,omega[iturb],zero(omega[iturb]),hubPosTmp,hubAngle[iturb],hubVel,hubAcc)   # get mesh vel/acc of all AD15 blades   (blades + struts in OWENS)
+
+        # hub
+        #FIXME: this is not complete.  The hubVel is probably not correctly set.
+        CG2H = calcHubRotMat(hubAngle[iturb], -azi)        
+        hubOrient    = vec(CG2H)
 
         # Initialize outputs and resulting mesh forces
         try
@@ -997,11 +1005,6 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
 
         #TODO:  Transfer mesh structural deformation from OWENS, convert to global coords (if needed), and then apply to turbstruct
         #            turbstruct.nacPos,  turbstruct.nacOrient,  turbstruct.nacVel,  turbstruct.nacAcc,
-
-        # Shift all positions by the RefPos for the turbine to get global position
-        turbstruct[iturb].rootPos =  turbstruct[iturb].rootPos
-        turbstruct[iturb].meshPos =  turbstruct[iturb].meshPos
-        turbstruct[iturb].hubPos  =  turbstruct[iturb].hubPos
 
         # Set the motions for each turbine (passed in global values)
         setRotorMotion(iturb)
