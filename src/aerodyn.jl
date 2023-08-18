@@ -989,7 +989,7 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
 
         # hub
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
-        CG2H = calcHubRotMat(turbine,hubAngle[iturb], -azi[iturb])
+        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi[iturb])
         turbstruct[iturb].hubPos       = hubPos[iturb]
         turbstruct[iturb].hubOrient    = vec(CG2H)
         turbstruct[iturb].hubVel       = hubVel[iturb]
@@ -1102,7 +1102,7 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
             #   There is undoubtedly a much more elegant way to do this
             # TODO: need to check that this is actually correct
             # conversion to hub coordinates (rotating)
-            CG2H = calcHubRotMat(turbine,zeros(3), -azi[iturb])
+            CG2H = calcHubRotMat(turbine[iturb],zeros(3), -azi[iturb])
             for iNode=1:mesh[iturb].numNodes
                 FMg = [Fx[iturb][iNode] Fy[iturb][iNode] Fz[iturb][iNode] Mx[iturb][iNode] My[iturb][iNode] Mz[iturb][iNode]]
                 FM = frame_convert(FMg, CG2H)
