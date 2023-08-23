@@ -853,7 +853,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
         # hub
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
-        CG2H = calcHubRotMat(hubAngle[iturb], -azi)        
+        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi)        
         hubOrient    = vec(CG2H)
 
         # Initialize outputs and resulting mesh forces
@@ -1213,11 +1213,11 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     RootAcc     = zeros(Float32,6,turbine.adi_numbl)
     ### 1. calculate relative velocity from mesh distortions
     # conversion from hub coordinates to global
-    if turbine.isVAWT
-        CG2H = calcHubRotMat(turbine,hubAngle, azi)
-    else
-        CG2H = calcHubRotMat(turbine,hubAngle, -azi)
-    end
+    # if turbine.isVAWT
+    CG2H = calcHubRotMat(turbine,hubAngle, azi)
+    # else
+    #     CG2H = calcHubRotMat(turbine,hubAngle, -azi)
+    # end
     CH2G = transpose(CG2H)
     # blades
     for ibld = 1:turbine.B
@@ -1251,11 +1251,11 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     ### 2. Tangential velocity due to hub rotation
     # calculate distance of point from hub axis, multiply by Omega_rad for tangential velocity component
     # hub axis vector in global coordinates
-    if turbine.isVAWT
-        hubAxis = CG2H[:,3]
-    else
-        hubAxis = CG2H[:,1]
-    end
+    # if turbine.isVAWT
+    hubAxis = CG2H[:,3]
+    # else
+    #     hubAxis = CG2H[:,1]
+    # end
 
     for ibld = 1:size(RootVel,2)
         # Global coordinates
@@ -1362,19 +1362,19 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
     MeshVel     = zeros(Float32,6,turbine.numMeshNodes)
     MeshAcc     = zeros(Float32,6,turbine.numMeshNodes)
     # conversion from hub coordinates to global
-    if turbine.isVAWT
-        CG2H = calcHubRotMat(turbine,hubAngle, azi)
-    else
-        CG2H = calcHubRotMat(turbine,hubAngle, -azi)
-    end
+    # if turbine.isVAWT
+    CG2H = calcHubRotMat(turbine,hubAngle, azi)
+    # else
+    #     CG2H = calcHubRotMat(turbine,hubAngle, -azi)
+    # end
     CH2G = transpose(CG2H)
 
     # hub axis vector in global coordinates
-    if turbine.isVAWT
-        hubAxis = CG2H[:,3]
-    else
-        hubAxis = CG2H[:,1]
-    end
+    # if turbine.isVAWT
+    hubAxis = CG2H[:,3]
+    # else
+    #     hubAxis = CG2H[:,1]
+    # end
     # blades, bottom struts, top struts
     iNode = 1
     for ibld = 1:size(turbine.bladeIdx,1)
@@ -1447,20 +1447,25 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
         Psi     = turbine.Ort.Psi_d[idx]    - rad2deg(u_j[(idx-1)*6+4])
         Theta   = turbine.Ort.Theta_d[idx]  - rad2deg(u_j[(idx-1)*6+5])
         Twist   = turbine.Ort.Twist_d[idx]  - rad2deg(u_j[(idx-1)*6+6])
-        
-        if turbine.isVAWT
-            angle_axes = [3,2,1,2]
-            ang1 = [Psi, Theta, Twist, -90]
-            ang2 = [Psi, Theta, Twist,  90]
-        else
-            angle_axes = [2,3,2,1]
-            ang1 = [90, Psi, Theta, Twist]
-            ang2 = [ 90, Psi, Theta, Twist]
-        end
+        # angle = atan.(diff(shapeX),diff(shapeY))[1]
+        # Rz = [cos(angle) -sin(angle)
+        #     sin(angle) cos(angle)]
+
+        # XY = [shapeX;; shapeY]*Rz'
+        # if turbine.isVAWT
+        angle_axes = [3,2,1,2]
+        ang1 = [Psi, Theta, Twist, -90]
+        ang2 = [Psi, Theta, Twist,  90]
+        # else
+        #     angle_axes = [2,3,2,1]
+        #     ang1 = [90, Psi, Theta, Twist]
+        #     ang2 = [ 90, Psi, Theta, Twist]
+        # end
 
         if i<=turbine.B
             #FIME: the following is for a CCW spinning rotor.  some things need changing for a CW spinning rotor.
             # flip +z towards X, then apply Twist (Roll, Rx) -> Theta (Pitch, Ry) -> Psi (Yaw, Rz) 
+            ang1[2] = -90.0-rad2deg(u_j[(idx-1)*6+5])
             DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)
         else
             DCM = CH2G * transpose(createGeneralTransformationMatrix(ang2,angle_axes))
@@ -1507,15 +1512,15 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
                 #if idx==turbine.bladeElem[ibld,1]
                 #    @printf("            normal   %i      %7.3f + %7.3f     %7.3f + %7.3f     %7.3f + %7.3f\n", ibld, turbine.Ort.Psi_d[idx], rad2deg(u_j[(idx-1)*6+4]), turbine.Ort.Theta_d[idx], rad2deg(u_j[(idx-1)*6+5]), turbine.Ort.Twist_d[idx], rad2deg(u_j[(idx-1)*6+6]))
                 #end
-                if turbine.isVAWT
-                    angle_axes = [3,2,1,2]
-                    ang1 = [Psi, Theta, Twist, -90]
-                    ang2 = [Psi, Theta, Twist,  90]
-                else
-                    angle_axes = [2,3,2,1]
-                    ang1 = [-90, Psi, Theta, Twist]
-                    ang2 = [ 90, Psi, Theta, Twist]
-                end
+                # if turbine.isVAWT
+                angle_axes = [3,2,1,2]
+                ang1 = [Psi, Theta, Twist, -90]
+                ang2 = [Psi, Theta, Twist,  90]
+                # else
+                #     angle_axes = [2,3,2,1]
+                #     ang1 = [-90, Psi, Theta, Twist]
+                #     ang2 = [ 90, Psi, Theta, Twist]
+                # end
 
                 if ibld<=turbine.B
                     DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes);
@@ -1541,15 +1546,15 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
                 #if idx==turbine.bladeElem[ibld,1]
                 #    @printf("            reverse  %i      %7.3f + %7.3f     %7.3f + %7.3f     %7.3f + %7.3f\n", ibld, turbine.Ort.Psi_d[idx], rad2deg(u_j[(idx-1)*6+4]), turbine.Ort.Theta_d[idx], rad2deg(u_j[(idx-1)*6+5]), turbine.Ort.Twist_d[idx], rad2deg(u_j[(idx-1)*6+6]))
                 #end
-                if turbine.isVAWT
-                    angle_axes = [3,2,1,2]
-                    ang1 = [Psi, Theta, Twist, -90]
-                    ang2 = [Psi, Theta, Twist,  90]
-                else
-                    angle_axes = [2,3,2,1]
-                    ang1 = [-90, Psi, Theta, Twist]
-                    ang2 = [ 90, Psi, Theta, Twist]
-                end
+                # if turbine.isVAWT
+                angle_axes = [3,2,1,2]
+                ang1 = [Psi, Theta, Twist, -90]
+                ang2 = [Psi, Theta, Twist,  90]
+                # else
+                #     angle_axes = [2,3,2,1]
+                #     ang1 = [-90, Psi, Theta, Twist]
+                #     ang2 = [ 90, Psi, Theta, Twist]
+                # end
                 if ibld<=turbine.B
                     DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes);
                 else
@@ -1702,11 +1707,11 @@ function frame_convert(init_frame_vals, trans_mat)
 end
 
 function calcHubRotMat(turbine,ptfmRot, azi_j)
-    if turbine.isVAWT
-        rot_axis = 3
-    else
-        rot_axis = 1
-    end
+    # if turbine.isVAWT
+    rot_axis = 3
+    # else
+    #     rot_axis = 1
+    # end
     CN2P = transMat(ptfmRot[1], ptfmRot[2], ptfmRot[3])
     CP2H = createGeneralTransformationMatrix([azi_j*180/pi],[rot_axis])
     CN2H = CN2P*CP2H
