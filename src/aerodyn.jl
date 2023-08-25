@@ -751,7 +751,7 @@ Initializes aerodynamic models and sets up backend persistent memory to simplify
 * `adi_dt`: timestep
 * `adi_tmax`: maximum time
 * `hubPos`: hub position in global coordinates, 3-vector (m). NOTE: AD15 assumes a different hub location than OWENS
-* `hubAngle`: hub axis angle, 3-vector (radians)
+* `hubAngle`: hub axis angle, 3-vector (radians) #FIXME it seems like degrees is actually correct...
 * `numTurbines`: number of turbines
 
 
@@ -1106,6 +1106,7 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
             #   There is undoubtedly a much more elegant way to do this
             # TODO: need to check that this is actually correct
             # conversion to hub coordinates (rotating)
+            # TODO: for HAWT ensure loads are properly mapped from the aerodyn Rx FOR to the owens Rz FOR
             CG2H = calcHubRotMat(turbine[iturb],zeros(3), -azi[iturb])
             for iNode=1:mesh[iturb].numNodes
                 FMg = [Fx[iturb][iNode] Fy[iturb][iNode] Fz[iturb][iNode] Mx[iturb][iNode] My[iturb][iNode] Mz[iturb][iNode]]
@@ -1444,9 +1445,9 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
 
     for i=1:size(turbine.bladeElem,1)
         idx=turbine.bladeElem[i]    #,1]
-        Psi     = turbine.Ort.Psi_d[idx]    - rad2deg(u_j[(idx-1)*6+4])
-        Theta   = turbine.Ort.Theta_d[idx]  - rad2deg(u_j[(idx-1)*6+5])
-        Twist   = turbine.Ort.Twist_d[idx]  - rad2deg(u_j[(idx-1)*6+6])
+        Psi     = turbine.Ort.Psi_d[idx]    #- rad2deg(u_j[(idx-1)*6+4]) # we should not include deformation of the angles since those are in the mesh, this is just aligning the overall blade angles, there is deformation in the overall position so the blades follow the deformation of the tower.
+        Theta   = turbine.Ort.Theta_d[idx]  #- rad2deg(u_j[(idx-1)*6+5])
+        Twist   = turbine.Ort.Twist_d[idx]  #- rad2deg(u_j[(idx-1)*6+6])
         # angle = atan.(diff(shapeX),diff(shapeY))[1]
         # Rz = [cos(angle) -sin(angle)
         #     sin(angle) cos(angle)]
@@ -1457,15 +1458,21 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
         ang1 = [Psi, Theta, Twist, -90]
         ang2 = [Psi, Theta, Twist,  90]
         # else
-        #     angle_axes = [2,3,2,1]
-        #     ang1 = [90, Psi, Theta, Twist]
-        #     ang2 = [ 90, Psi, Theta, Twist]
+        #     angle_axes = [3,2,1,2]
+        #     ang1 = [Psi, Theta, Twist, -90]
+        #     ang2 = [Psi, Theta, Twist,  90]
         # end
 
         if i<=turbine.B
             #FIME: the following is for a CCW spinning rotor.  some things need changing for a CW spinning rotor.
             # flip +z towards X, then apply Twist (Roll, Rx) -> Theta (Pitch, Ry) -> Psi (Yaw, Rz) 
-            ang1[2] = -90.0-rad2deg(u_j[(idx-1)*6+5])
+            if turbine.isVAWT
+                ang1[2] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
+                ang1[3] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
+            else
+                angle_axes = reverse([3,2,1,2])
+                ang1 = reverse([Psi+360/turbine.B/2, Theta*0.0, Twist*0.0+180, 90])
+            end
             DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)
         else
             DCM = CH2G * transpose(createGeneralTransformationMatrix(ang2,angle_axes))
@@ -1707,11 +1714,11 @@ function frame_convert(init_frame_vals, trans_mat)
 end
 
 function calcHubRotMat(turbine,ptfmRot, azi_j)
-    # if turbine.isVAWT
-    rot_axis = 3
-    # else
-    #     rot_axis = 1
-    # end
+    if turbine.isVAWT
+        rot_axis = 3
+    else
+        rot_axis = 1
+    end
     CN2P = transMat(ptfmRot[1], ptfmRot[2], ptfmRot[3])
     CP2H = createGeneralTransformationMatrix([azi_j*180/pi],[rot_axis])
     CN2H = CN2P*CP2H
