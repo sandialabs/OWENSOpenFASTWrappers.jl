@@ -807,7 +807,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         Radius = maximum(bld_x[iturb])
         
         numMeshNodes = getAD15numMeshNodes(bladeIdx[iturb])
-#FIXME: should we use array of refPos?
+
         turbine[iturb] = Turbine(Radius,omega[iturb],refPos[iturb],B[iturb],adi_numbl,numMeshNodes,bladeIdx[iturb],bladeElem[iturb],mymesh[iturb],myort[iturb],isVAWT)
 
         # Mesh info for ADI
@@ -1107,7 +1107,7 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
             # TODO: need to check that this is actually correct
             # conversion to hub coordinates (rotating)
             # TODO: for HAWT ensure loads are properly mapped from the aerodyn Rx FOR to the owens Rz FOR
-            CG2H = calcHubRotMat(turbine[iturb],zeros(3), -azi[iturb])
+            CG2H = calcHubRotMat(turbine[iturb],zeros(3), azi[iturb])
             for iNode=1:mesh[iturb].numNodes
                 FMg = [Fx[iturb][iNode] Fy[iturb][iNode] Fz[iturb][iNode] Mx[iturb][iNode] My[iturb][iNode] Mz[iturb][iNode]]
                 FM = frame_convert(FMg, CG2H)
@@ -1509,89 +1509,54 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
     CH2G = transpose(CG2H)
     iNode=0
     for ibld=1:size(turbine.bladeElem,1)
-        sgn = 1*sign(turbine.bladeElem[ibld,2] - turbine.bladeElem[ibld,1])
+        lenbld = turbine.bladeElem[ibld,2] - turbine.bladeElem[ibld,1]
+        sgn = 1*sign(lenbld)
         if sgn > 0      # normal ordering
-            #println("+ direction blade: $(turbine.bladeElem[ibld,1]):$(turbine.bladeElem[ibld,2])")
-            for idx=(turbine.bladeElem[ibld,1]):(turbine.bladeElem[ibld,2])
-                Psi     = turbine.Ort.Psi_d[idx]    - rad2deg(u_j[(idx-1)*6+4])
-                Theta   = turbine.Ort.Theta_d[idx]  - rad2deg(u_j[(idx-1)*6+5])
-                Twist   = turbine.Ort.Twist_d[idx]  - rad2deg(u_j[(idx-1)*6+6])
-                #if idx==turbine.bladeElem[ibld,1]
-                #    @printf("            normal   %i      %7.3f + %7.3f     %7.3f + %7.3f     %7.3f + %7.3f\n", ibld, turbine.Ort.Psi_d[idx], rad2deg(u_j[(idx-1)*6+4]), turbine.Ort.Theta_d[idx], rad2deg(u_j[(idx-1)*6+5]), turbine.Ort.Twist_d[idx], rad2deg(u_j[(idx-1)*6+6]))
-                #end
-                # if turbine.isVAWT
-                angle_axes = [2,1,2,3]
-                ang1 = [-90,Twist,Theta,Psi]
-                ang2 = [90,Twist,Theta,Psi]
-                # else
-                #     angle_axes = [2,3,2,1]
-                #     ang1 = [-90, Psi, Theta, Twist]
-                #     ang2 = [ 90, Psi, Theta, Twist]
-                # end
-
-                if ibld<=turbine.B
-                    if turbine.isVAWT
-                        # ang1[2] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
-                        # ang1[3] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
-                    else
-                        angle_axes = reverse([3,2,1,2])
-                        ang1 = reverse([Psi, Theta, Twist, 90])
-                    end
-                    DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)
-                else
-                    DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes)'
-                end
-                iNode += 1
-                MeshOrient[:,iNode] = vec(DCM)
-                #println("+Blade $ibld Node $iNode orient: $ang            from Elem $idx")
-                # duplicate last node
-                if idx==turbine.bladeElem[ibld,2]
-                    iNode += 1
-                    MeshOrient[:,iNode] = transpose(vec(DCM))
-                    #println("+Blade $ibld Node $iNode orient: $ang            from Elem $idx")
-                end
-            end
+            #TODO: fix this
+            idxarry=(turbine.bladeElem[ibld,1]):-1:(turbine.bladeElem[ibld,2])
         else
-            #println("- direction blade: $(turbine.bladeElem[ibld,1]):$(turbine.bladeElem[ibld,2])")
-            for idx=(turbine.bladeElem[ibld,1]):-1:(turbine.bladeElem[ibld,2])
-                Psi     = turbine.Ort.Psi_d[idx]    - rad2deg(u_j[(idx-1)*6+4])
-                Theta   = turbine.Ort.Theta_d[idx]  - rad2deg(u_j[(idx-1)*6+5])
-                Twist   = turbine.Ort.Twist_d[idx]  - rad2deg(u_j[(idx-1)*6+6])
-                #if idx==turbine.bladeElem[ibld,1]
-                #    @printf("            reverse  %i      %7.3f + %7.3f     %7.3f + %7.3f     %7.3f + %7.3f\n", ibld, turbine.Ort.Psi_d[idx], rad2deg(u_j[(idx-1)*6+4]), turbine.Ort.Theta_d[idx], rad2deg(u_j[(idx-1)*6+5]), turbine.Ort.Twist_d[idx], rad2deg(u_j[(idx-1)*6+6]))
-                #end
-                # if turbine.isVAWT
-                angle_axes = [2,1,2,3]
-                ang1 = [-90,Twist,Theta,Psi]
-                ang2 = [90,Twist,Theta,Psi]
-                # else
-                #     angle_axes = [2,3,2,1]
-                #     ang1 = [-90, Psi, Theta, Twist]
-                #     ang2 = [ 90, Psi, Theta, Twist]
-                # end
-                if ibld<=turbine.B
-                    if turbine.isVAWT
-                        # ang1[2] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
-                        # ang1[3] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
-                    else
-                        angle_axes = reverse([3,2,1,2])
-                        ang1 = reverse([Psi, Theta, Twist, 90])
-                    end
-                    DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)
-                else
-                    DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes)'
-                end
-                iNode += 1
-                MeshOrient[:,iNode] = vec(DCM)
-                #println("-Blade $ibld Node $iNode orient: $ang            from Elem $idx")
-                # duplicate last node
-                if idx==turbine.bladeElem[ibld,2]
-                    iNode += 1
-                    MeshOrient[:,iNode] = transpose(vec(DCM))
-                    #println("-Blade $ibld Node $iNode orient: $ang            from Elem $idx")
-                end
-            end
+            idxarry=reverse(collect(turbine.bladeElem[ibld,2]:turbine.bladeElem[ibld,1]))
         end
+            #println("+ direction blade: $(turbine.bladeElem[ibld,1]):$(turbine.bladeElem[ibld,2])")
+        for idx in idxarry
+
+            Psi     = turbine.Ort.Psi_d[idx]    - rad2deg(u_j[(idx-1)*6+4])
+            Theta   = turbine.Ort.Theta_d[idx]  - rad2deg(u_j[(idx-1)*6+5])
+            Twist   = turbine.Ort.Twist_d[idx]  - rad2deg(u_j[(idx-1)*6+6])
+            #if idx==turbine.bladeElem[ibld,1]
+            #    @printf("            reverse  %i      %7.3f + %7.3f     %7.3f + %7.3f     %7.3f + %7.3f\n", ibld, turbine.Ort.Psi_d[idx], rad2deg(u_j[(idx-1)*6+4]), turbine.Ort.Theta_d[idx], rad2deg(u_j[(idx-1)*6+5]), turbine.Ort.Twist_d[idx], rad2deg(u_j[(idx-1)*6+6]))
+            #end
+            # if turbine.isVAWT
+            angle_axes = [2,1,2,3]
+            ang1 = [-90,Twist,Theta,Psi]
+            ang2 = [90,Twist,Theta,Psi]
+            # else
+            #     angle_axes = [2,3,2,1]
+            #     ang1 = [-90, Psi, Theta, Twist]
+            #     ang2 = [ 90, Psi, Theta, Twist]
+            # end
+            if ibld<=turbine.B
+                # if turbine.isVAWT
+                #     # ang1[2] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
+                #     # ang1[3] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
+                # else
+                #     angle_axes = reverse([3,2,1,2])
+                #     ang1 = reverse([Psi, Theta, Twist, 90])
+                # end
+                DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)
+            else
+                DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes)'
+            end
+            iNode += 1
+            MeshOrient[:,iNode] = vec(DCM)'
+            #println("-Blade $ibld Node $iNode orient: $ang            from Elem $idx")
+            # duplicate last node
+            if idx==turbine.bladeElem[ibld,2]
+                iNode += 1
+                MeshOrient[:,iNode] = transpose(vec(DCM))
+                #println("-Blade $ibld Node $iNode orient: $ang            from Elem $idx")
+            end
+        end     
     end
     return MeshOrient
 end
