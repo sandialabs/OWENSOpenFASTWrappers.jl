@@ -8,7 +8,7 @@ import OWENS
 
 import DelimitedFiles
 path = splitdir(@__FILE__)[1]
-import OpenFASTWrappers
+# import OpenFASTWrappers
 using Test
 
 import PyPlot
@@ -28,7 +28,7 @@ plot_cycle=["#348ABD", "#A60628", "#009E73", "#7A68A6", "#D55E00", "#CC79A7"]
 # include("$path/setup_XFlow_25kW.jl")
 # XFlow specific mesh generator
 # include("$path/setupOWENShawt.jl")
-# include("$path/../../src/OpenFASTWrappers.jl")
+include("$path/../../src/OpenFASTWrappers.jl")
 
 # # Run the standalone aerodyn
 # run(`$path/../../../openfastandy/build/modules/aerodyn/aerodyn_driver $path/HAWT_standalone_test.dvr`)
@@ -38,14 +38,14 @@ adi_lib = "$path/../../../openfastandy/build/modules/aerodyn/libaerodyn_inflow_c
 
 # output files from ADI
 adi_rootname = "$path/HAWT_OWENS_AD15"
-adi_rootname_stiff_one_way = "$path/HAWT_OWENS_AD15_stiff_one_way"
+adi_rootname_twoway = "$path/HAWT_OWENS_AD15_stiff_one_way"
 
 num_corrections = 0
 
 
 dt = 0.01
 t_initial = 0.0
-t_max = 0.5
+t_max = 0.1
 ts = collect(t_initial:dt:t_max)
 numTS = length(ts)
 
@@ -97,7 +97,8 @@ mymesh,myel,myort,myjoint,sectionPropsArray,mass_twr, mass_bld,
     RPI=true,
     biwing=false,
     hub_depth = 1.0, #Hub Beam Depth
-    AD15_ccw = true
+    AD15_ccw = true,
+    angularOffset = -pi/2-2*pi/B/2,
     # R_root = 10.0, # m biwing radius
     # R_biwing = 30.0, # outer radius
     # R_tip = 54.014, # outer radius
@@ -255,7 +256,7 @@ OpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,[sh
         omega   = [omega],
         adi_wrOuts = 1,     # write output file [0 none, 1 txt, 2 binary, 3 both]
         adi_DT_Outs = dt,    # output frequency
-        hubAngle = [[0.0,-90.0,0.0]], #deg
+        hubAngle = [[0.0,0.0,0.0]], #deg
         refPos = [[0,0.0,137.0]],
         isVAWT = false
         )
@@ -277,7 +278,7 @@ for (tidx, t) in enumerate(ts[1:end-1])
         udot_j  = zeros(mymesh.numNodes*6)
         uddot_j = zeros(mymesh.numNodes*6)
         hubPos      = [0,0,0.0]                      # m
-        hubAngle    = [0,-90,0.0]                       # rad
+        hubAngle    = [0,0,0.0]                       # rad
         hubVel = zeros(6)
         hubAcc = zeros(6)
         OpenFASTWrappers.deformAD15([u_j],[udot_j],[uddot_j],[azi_j],[omega],[zero(omega)],[hubPos],[hubAngle],[hubVel],[hubAcc])
@@ -309,6 +310,98 @@ println("End Aerodynamics")
 OpenFASTWrappers.endTurb()
 
 
+# #########################################
+# ### Run STIFF one way coupling
+# #########################################
+
+# dt = 0.01
+# t_initial = t_initial = 0.0
+# t_max = 0.5
+# ts = collect(t_initial:dt:t_max)
+# numTS = length(ts)
+
+# mymesh.hubPos =  [0,0.0,137.0]#TODO: make this streamlined in the code initialization, consider putting it elsewhere.
+# mymesh.hubAngle = [0.0,-90,0.0]
+
+# #########################################
+# ### Create Aero Functions
+# #########################################
+
+# #FIXME: this is a placeholder call returning no loads
+# OpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname_twoway,[shapeX],[shapeY],[B],[Ht],[mymesh],[myort],[bladeIdx],[bladeElem];
+#         rho     = rho,
+#         adi_dt  = dt,
+#         adi_nstrut  = 0,
+#         adi_tmax= t_max,
+#         omega   = [omega],
+#         adi_wrOuts = 1,     # write output file [0 none, 1 txt, 2 binary, 3 both]
+#         adi_DT_Outs = dt,    # output frequency
+#         hubAngle = [[0.0,0.0,0.0]], #deg
+#         refPos = [[0,0.0,137.0]],
+#         isVAWT = false
+#         )
+
+# # Routine for getting aero forces from aD15
+
+# aeroForcesAD15(t,azi) = OWENS.mapAD15(t,azi,[mymesh],OpenFASTWrappers.advanceAD15;alwaysrecalc=true,verbosity=1)
+
+
+# ######################################
+# #### Perform Stiff One Way Test
+# #######################################
+
+# pBC = [1 1 0
+# 1 2 0
+# 1 3 0
+# 1 4 0
+# 1 5 0
+# 1 6 0]
+
+# model = OWENS.Inputs(;analysisType = "GX",
+#     tocp = [0.0,100000.1],
+#     Omegaocp = [RPM,RPM] ./ 60,
+#     turbineStartup = 0,
+#     generatorOn = false,
+#     useGeneratorFunction = false,
+#     numTS = numTS,
+#     delta_t = dt,
+#     aeroLoadsOn = 2.0,        # 1: one way; 1.5: aero once in iteration in 2 way; 2: two-way
+#     AD15On = true,
+#     topsideOn = true,
+#     interpOrder = 2)
+# model.iteration_parameters.MAXITER=20   # temporary for testing
+
+# feamodel = GyricFEA.FEAModel(;analysisType = "GX",
+#     outFilename = "none",
+#     joint = myjoint,
+#     platformTurbineConnectionNodeNumber = 1,
+#     pBC,
+#     nlOn = false,
+#     gravityOn = false, # turn off since aero only doesn't include gravity, also turned off rotational effects in setupxxx.jl
+#     numNodes = mymesh.numNodes,
+#     RayleighAlpha = 0.05,
+#     RayleighBeta = 0.05,
+#     return_all_reaction_forces = true,
+#     iterationType = "DI")
+
+# println("Running Unsteady")
+# t, aziHist,OmegaHist,OmegaDotHist,gbHist,gbDotHist,gbDotDotHist,
+# FReactionHist_stiff_one_way,FTwrBsHist,genTorque,genPower,torqueDriveShaft,uHist,
+# uHist_prp,epsilon_x_hist,epsilon_y_hist,epsilon_z_hist,kappa_x_hist,
+# kappa_y_hist,kappa_z_hist,FPtfmHist,FHydroHist,FMooringHist,
+# topFexternal_hist,rbDataHist = OWENS.Unsteady_Land(model;topModel=feamodel,topMesh=mymesh,topEl=myel,aero=aeroForcesAD15,
+#     deformAero=OpenFASTWrappers.deformAD15,system=system,assembly=assembly) #,meshcontrolfunction=mymeshcontrolfunction2,userDefinedGenerator=userDefinedGenerator,
+
+
+
+# println("End Aerodynamics")
+# OpenFASTWrappers.endTurb()
+# ####################################################################################################################################################################################################################################
+
+
+# println("Saving VTK time domain files")
+# ModelGen.gyricFEA_VTK("$path/vtk/OWENS_test_HAWT1",t,uHist,system,assembly,sections;scaling=1)#,azi=aziHist)
+
 ######################################
 #### Plot Comparison
 #######################################
@@ -321,18 +414,18 @@ header_standalone = DelimitedFiles.readdlm("$path/HAWT_standalone_test.out",head
 library_ADside = DelimitedFiles.readdlm("$adi_rootname.out",skipstart=8)
 header_library = DelimitedFiles.readdlm("$adi_rootname.out",header=true,skipstart=6)[2]
 
-# library_ADside_owens_stiff_one_way = DelimitedFiles.readdlm("$path/$adi_rootname_stiff_one_way.out",skipstart=8)
-# header_library_owens_stiff_one_way = DelimitedFiles.readdlm("$path/$adi_rootname_stiff_one_way.out",header=true,skipstart=6)[2]
+# library_ADside_owens_stiff_one_way = DelimitedFiles.readdlm("$path/$adi_rootname_twoway.out",skipstart=8)
+# header_library_owens_stiff_one_way = DelimitedFiles.readdlm("$path/$adi_rootname_twoway.out",header=true,skipstart=6)[2]
 
 # headerNames = ["AB4N006Vrel","AB1N002Alpha","AB4N006STVx","AB4N006STVy","AB4N006STVz","B1AeroFx","B1AeroFy","B1AeroFz"]
 bladenum= "1"
-node = "001"
+node = "018"
 bladenum2= bladenum#"1"
 bladenum3 = 1
 # headerNames1 = ["B$(bladenum)AeroFxg","B$(bladenum)AeroFyg","B$(bladenum)AeroFzg","B$(bladenum)AeroMxg","B$(bladenum)AeroMyg","B$(bladenum)AeroMzg"] #["AB$(bladenum)N$(node)Vrel","AB$(bladenum)N$(node)Alpha","AB$(bladenum)N$(node)STVx","AB$(bladenum)N$(node)STVy","AB$(bladenum)N$(node)STVz","AB$(bladenum)N$(node)Fn","AB$(bladenum)N$(node)Ft","B$(bladenum)AeroFx","B$(bladenum)AeroFy","B$(bladenum)AeroFz"]
 # headerNames2 = ["B$(bladenum2)AeroFxg","B$(bladenum2)AeroFyg","B$(bladenum2)AeroFzg","B$(bladenum2)AeroMxg","B$(bladenum2)AeroMyg","B$(bladenum2)AeroMzg"] #["AB$(bladenum2)N$(node)Vrel","AB$(bladenum2)N$(node)Alpha","AB$(bladenum2)N$(node)STVx","AB$(bladenum2)N$(node)STVy","AB$(bladenum2)N$(node)STVz","AB$(bladenum2)N$(node)Fn","AB$(bladenum2)N$(node)Ft","B$(bladenum2)AeroFx","B$(bladenum2)AeroFy","B$(bladenum2)AeroFz"]
 
-headerNames1 = headerNames2 = ["B$(bladenum)AeroFxg"]#B1Azimuth"]#AB1N001Alpha"]#["B$(bladenum)AeroFxg"]
+headerNames1 = headerNames2 = ["AB$(bladenum)N$(node)Ft"]#B1Azimuth"]#AB1N001Alpha"]#["B$(bladenum)AeroFxg"]
 
 plotdata1_standalone = zeros(length(headerNames1),length(standalone_AD[:,1]))
 plotdata1_library = zeros(length(headerNames1),length(standalone_AD[:,1]))

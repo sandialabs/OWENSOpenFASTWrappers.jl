@@ -1506,7 +1506,7 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
     MeshOrient  = zeros(9,turbine.numMeshNodes)
     # conversion from hub coordinates to global
     CG2H = calcHubRotMat(turbine,hubAngle, azi)
-    CH2G = transpose(CG2H)
+    CH2G = CG2H
     iNode=0
     for ibld=1:size(turbine.bladeElem,1)
         lenbld = turbine.bladeElem[ibld,2] - turbine.bladeElem[ibld,1]
@@ -1532,7 +1532,7 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
             #     ang2 = [ 90, Psi, Theta, Twist]
             # end
 
-            DCM = CH2G * createGeneralTransformationMatrix(ang,angle_axes)
+            DCM = createGeneralTransformationMatrix(ang,angle_axes) * CH2G
 
             iNode += 1
             MeshOrient[:,iNode] = vec(DCM')
