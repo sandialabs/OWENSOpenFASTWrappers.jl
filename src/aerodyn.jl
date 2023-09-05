@@ -1454,9 +1454,9 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
 
         # XY = [shapeX;; shapeY]*Rz'
         # if turbine.isVAWT
-        angle_axes = [3,2,1,2]
-        ang1 = [Psi, Theta, Twist, -90]
-        ang2 = [Psi, Theta, Twist,  90]
+        angle_axes = [2,1,2,3]
+        ang1 = [-90,Twist,Theta,Psi]
+        ang2 = [90,Twist,Theta,Psi]
         # else
         #     angle_axes = [3,2,1,2]
         #     ang1 = [Psi, Theta, Twist, -90]
@@ -1467,17 +1467,17 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
             #FIME: the following is for a CCW spinning rotor.  some things need changing for a CW spinning rotor.
             # flip +z towards X, then apply Twist (Roll, Rx) -> Theta (Pitch, Ry) -> Psi (Yaw, Rz) 
             if turbine.isVAWT
-                ang1[2] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
-                ang1[3] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
+                ang1[3] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
+                ang1[2] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
             else
                 angle_axes = reverse([3,2,1,2])
-                ang1 = reverse([Psi+360/turbine.B/2, Theta*0.0, Twist*0.0+180, 90])
+                ang1 = reverse([Psi, Theta*0.0, Twist*0.0, 90])
             end
             DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)
         else
-            DCM = CH2G * transpose(createGeneralTransformationMatrix(ang2,angle_axes))
+            DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes)'
         end
-        RootOrient[:,i] = transpose(vec(DCM))
+        RootOrient[:,i] = vec(DCM)
     end
     return RootOrient
 end
@@ -1520,9 +1520,9 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
                 #    @printf("            normal   %i      %7.3f + %7.3f     %7.3f + %7.3f     %7.3f + %7.3f\n", ibld, turbine.Ort.Psi_d[idx], rad2deg(u_j[(idx-1)*6+4]), turbine.Ort.Theta_d[idx], rad2deg(u_j[(idx-1)*6+5]), turbine.Ort.Twist_d[idx], rad2deg(u_j[(idx-1)*6+6]))
                 #end
                 # if turbine.isVAWT
-                angle_axes = [3,2,1,2]
-                ang1 = [Psi, Theta, Twist, -90]
-                ang2 = [Psi, Theta, Twist,  90]
+                angle_axes = [2,1,2,3]
+                ang1 = [-90,Twist,Theta,Psi]
+                ang2 = [90,Twist,Theta,Psi]
                 # else
                 #     angle_axes = [2,3,2,1]
                 #     ang1 = [-90, Psi, Theta, Twist]
@@ -1530,12 +1530,19 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
                 # end
 
                 if ibld<=turbine.B
-                    DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes);
+                    if turbine.isVAWT
+                        # ang1[2] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
+                        # ang1[3] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
+                    else
+                        angle_axes = reverse([3,2,1,2])
+                        ang1 = reverse([Psi, Theta, Twist, 90])
+                    end
+                    DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)
                 else
-                    DCM = CH2G * transpose(createGeneralTransformationMatrix(ang2,angle_axes));
+                    DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes)'
                 end
                 iNode += 1
-                MeshOrient[:,iNode] = transpose(vec(DCM))
+                MeshOrient[:,iNode] = vec(DCM)
                 #println("+Blade $ibld Node $iNode orient: $ang            from Elem $idx")
                 # duplicate last node
                 if idx==turbine.bladeElem[ibld,2]
@@ -1554,21 +1561,28 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
                 #    @printf("            reverse  %i      %7.3f + %7.3f     %7.3f + %7.3f     %7.3f + %7.3f\n", ibld, turbine.Ort.Psi_d[idx], rad2deg(u_j[(idx-1)*6+4]), turbine.Ort.Theta_d[idx], rad2deg(u_j[(idx-1)*6+5]), turbine.Ort.Twist_d[idx], rad2deg(u_j[(idx-1)*6+6]))
                 #end
                 # if turbine.isVAWT
-                angle_axes = [3,2,1,2]
-                ang1 = [Psi, Theta, Twist, -90]
-                ang2 = [Psi, Theta, Twist,  90]
+                angle_axes = [2,1,2,3]
+                ang1 = [-90,Twist,Theta,Psi]
+                ang2 = [90,Twist,Theta,Psi]
                 # else
                 #     angle_axes = [2,3,2,1]
                 #     ang1 = [-90, Psi, Theta, Twist]
                 #     ang2 = [ 90, Psi, Theta, Twist]
                 # end
                 if ibld<=turbine.B
-                    DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes);
+                    if turbine.isVAWT
+                        # ang1[2] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
+                        # ang1[3] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
+                    else
+                        angle_axes = reverse([3,2,1,2])
+                        ang1 = reverse([Psi, Theta, Twist, 90])
+                    end
+                    DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)
                 else
-                    DCM = CH2G * transpose(createGeneralTransformationMatrix(ang2,angle_axes));
+                    DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes)'
                 end
                 iNode += 1
-                MeshOrient[:,iNode] = transpose(vec(DCM))
+                MeshOrient[:,iNode] = vec(DCM)
                 #println("-Blade $ibld Node $iNode orient: $ang            from Elem $idx")
                 # duplicate last node
                 if idx==turbine.bladeElem[ibld,2]
@@ -1610,7 +1624,7 @@ function createGeneralTransformationMatrix(angleArray,axisArray)
 
     #multiply consecutive rotation sequency direction cosine matrices to arrive at overall transformation matrix
     for i=2:1:numRotations
-        dcmTotal = dcmArray[:,:,i]*dcmTotal
+        dcmTotal = dcmTotal*dcmArray[:,:,i]
     end
 
     return dcmTotal
@@ -1719,7 +1733,8 @@ function calcHubRotMat(turbine,ptfmRot, azi_j)
     else
         rot_axis = 1
     end
-    CN2P = transMat(ptfmRot[1], ptfmRot[2], ptfmRot[3])
+    # CN2P = transMat(ptfmRot[1], ptfmRot[2], ptfmRot[3])
+    CN2P = createGeneralTransformationMatrix(ptfmRot,[1,2,3])
     CP2H = createGeneralTransformationMatrix([azi_j*180/pi],[rot_axis])
     CN2H = CN2P*CP2H
     return CN2H
