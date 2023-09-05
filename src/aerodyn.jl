@@ -1512,8 +1512,7 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
         lenbld = turbine.bladeElem[ibld,2] - turbine.bladeElem[ibld,1]
         sgn = 1*sign(lenbld)
         if sgn > 0      # normal ordering
-            #TODO: fix this
-            idxarry=(turbine.bladeElem[ibld,1]):-1:(turbine.bladeElem[ibld,2])
+            idxarry=collect(turbine.bladeElem[ibld,1]:turbine.bladeElem[ibld,2])
         else
             idxarry=reverse(collect(turbine.bladeElem[ibld,2]:turbine.bladeElem[ibld,1]))
         end
@@ -1523,38 +1522,24 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
             Psi     = turbine.Ort.Psi_d[idx]    - rad2deg(u_j[(idx-1)*6+4])
             Theta   = turbine.Ort.Theta_d[idx]  - rad2deg(u_j[(idx-1)*6+5])
             Twist   = turbine.Ort.Twist_d[idx]  - rad2deg(u_j[(idx-1)*6+6])
-            #if idx==turbine.bladeElem[ibld,1]
-            #    @printf("            reverse  %i      %7.3f + %7.3f     %7.3f + %7.3f     %7.3f + %7.3f\n", ibld, turbine.Ort.Psi_d[idx], rad2deg(u_j[(idx-1)*6+4]), turbine.Ort.Theta_d[idx], rad2deg(u_j[(idx-1)*6+5]), turbine.Ort.Twist_d[idx], rad2deg(u_j[(idx-1)*6+6]))
-            #end
+
             # if turbine.isVAWT
-            angle_axes = [2,1,2,3]
-            ang1 = [-90,Twist,Theta,Psi]
-            ang2 = [90,Twist,Theta,Psi]
+            angle_axes = [1,2,3]
+            ang = [Twist,Theta,Psi]
             # else
             #     angle_axes = [2,3,2,1]
             #     ang1 = [-90, Psi, Theta, Twist]
             #     ang2 = [ 90, Psi, Theta, Twist]
             # end
-            if ibld<=turbine.B
-                # if turbine.isVAWT
-                #     # ang1[2] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
-                #     # ang1[3] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
-                # else
-                #     angle_axes = reverse([3,2,1,2])
-                #     ang1 = reverse([Psi, Theta, Twist, 90])
-                # end
-                DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)
-            else
-                DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes)'
-            end
+
+            DCM = CH2G * createGeneralTransformationMatrix(ang,angle_axes)
+
             iNode += 1
-            MeshOrient[:,iNode] = vec(DCM)'
-            #println("-Blade $ibld Node $iNode orient: $ang            from Elem $idx")
-            # duplicate last node
+            MeshOrient[:,iNode] = vec(DCM')
+            # duplicate last node #TODO: map elements to nodes instead
             if idx==turbine.bladeElem[ibld,2]
                 iNode += 1
-                MeshOrient[:,iNode] = transpose(vec(DCM))
-                #println("-Blade $ibld Node $iNode orient: $ang            from Elem $idx")
+                MeshOrient[:,iNode] = vec(DCM')
             end
         end     
     end
