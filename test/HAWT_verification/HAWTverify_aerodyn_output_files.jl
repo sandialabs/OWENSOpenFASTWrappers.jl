@@ -98,7 +98,7 @@ mymesh,myel,myort,myjoint,sectionPropsArray,mass_twr, mass_bld,
     biwing=false,
     hub_depth = 1.0, #Hub Beam Depth
     AD15_ccw = true,
-    angularOffset = -pi/2-2*pi/B/2,
+    angularOffset = -pi/2,
     # R_root = 10.0, # m biwing radius
     # R_biwing = 30.0, # outer radius
     # R_tip = 54.014, # outer radius
@@ -257,7 +257,10 @@ OpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,[sh
         adi_wrOuts = 1,     # write output file [0 none, 1 txt, 2 binary, 3 both]
         adi_DT_Outs = dt,    # output frequency
         hubAngle = [[0.0,0.0,0.0]], #deg
-        refPos = [[0,0.0,137.0]],
+        hubPos      = [[0,0,Ht]],
+        nacAngle = [[0.0,0.0,0.0]], #deg
+        nacPos      = [[0,0,0.0]],  
+        refPos = [[0,0.0,0.0]],
         isVAWT = false
         )
 
@@ -277,8 +280,8 @@ for (tidx, t) in enumerate(ts[1:end-1])
         u_j     = zeros(mymesh.numNodes*6)
         udot_j  = zeros(mymesh.numNodes*6)
         uddot_j = zeros(mymesh.numNodes*6)
-        hubPos      = [0,0,0.0]                      # m
-        hubAngle    = [0,0,0.0]                       # rad
+        hubPos      = [0,0,Ht]                      # m
+        hubAngle    = [0,90,0.0]                       # rad
         hubVel = zeros(6)
         hubAcc = zeros(6)
         OpenFASTWrappers.deformAD15([u_j],[udot_j],[uddot_j],[azi_j],[omega],[zero(omega)],[hubPos],[hubAngle],[hubVel],[hubAcc])
@@ -402,83 +405,83 @@ OpenFASTWrappers.endTurb()
 # println("Saving VTK time domain files")
 # ModelGen.gyricFEA_VTK("$path/vtk/OWENS_test_HAWT1",t,uHist,system,assembly,sections;scaling=1)#,azi=aziHist)
 
-######################################
-#### Plot Comparison
-#######################################
+# ######################################
+# #### Plot Comparison
+# #######################################
 
-# Load Standalone Data
-standalone_AD = DelimitedFiles.readdlm("$path/HAWT_standalone_test.out",skipstart=8)
-header_standalone = DelimitedFiles.readdlm("$path/HAWT_standalone_test.out",header=true,skipstart=6)[2]
+# # Load Standalone Data
+# standalone_AD = DelimitedFiles.readdlm("$path/HAWT_standalone_test.out",skipstart=8)
+# header_standalone = DelimitedFiles.readdlm("$path/HAWT_standalone_test.out",header=true,skipstart=6)[2]
 
-# Compare with Current Data on the AeroDyn Side
-library_ADside = DelimitedFiles.readdlm("$adi_rootname.out",skipstart=8)
-header_library = DelimitedFiles.readdlm("$adi_rootname.out",header=true,skipstart=6)[2]
+# # Compare with Current Data on the AeroDyn Side
+# library_ADside = DelimitedFiles.readdlm("$adi_rootname.out",skipstart=8)
+# header_library = DelimitedFiles.readdlm("$adi_rootname.out",header=true,skipstart=6)[2]
 
-# library_ADside_owens_stiff_one_way = DelimitedFiles.readdlm("$path/$adi_rootname_twoway.out",skipstart=8)
-# header_library_owens_stiff_one_way = DelimitedFiles.readdlm("$path/$adi_rootname_twoway.out",header=true,skipstart=6)[2]
+# # library_ADside_owens_stiff_one_way = DelimitedFiles.readdlm("$path/$adi_rootname_twoway.out",skipstart=8)
+# # header_library_owens_stiff_one_way = DelimitedFiles.readdlm("$path/$adi_rootname_twoway.out",header=true,skipstart=6)[2]
 
-# headerNames = ["AB4N006Vrel","AB1N002Alpha","AB4N006STVx","AB4N006STVy","AB4N006STVz","B1AeroFx","B1AeroFy","B1AeroFz"]
-bladenum= "1"
-node = "018"
-bladenum2= bladenum#"1"
-bladenum3 = 1
-# headerNames1 = ["B$(bladenum)AeroFxg","B$(bladenum)AeroFyg","B$(bladenum)AeroFzg","B$(bladenum)AeroMxg","B$(bladenum)AeroMyg","B$(bladenum)AeroMzg"] #["AB$(bladenum)N$(node)Vrel","AB$(bladenum)N$(node)Alpha","AB$(bladenum)N$(node)STVx","AB$(bladenum)N$(node)STVy","AB$(bladenum)N$(node)STVz","AB$(bladenum)N$(node)Fn","AB$(bladenum)N$(node)Ft","B$(bladenum)AeroFx","B$(bladenum)AeroFy","B$(bladenum)AeroFz"]
-# headerNames2 = ["B$(bladenum2)AeroFxg","B$(bladenum2)AeroFyg","B$(bladenum2)AeroFzg","B$(bladenum2)AeroMxg","B$(bladenum2)AeroMyg","B$(bladenum2)AeroMzg"] #["AB$(bladenum2)N$(node)Vrel","AB$(bladenum2)N$(node)Alpha","AB$(bladenum2)N$(node)STVx","AB$(bladenum2)N$(node)STVy","AB$(bladenum2)N$(node)STVz","AB$(bladenum2)N$(node)Fn","AB$(bladenum2)N$(node)Ft","B$(bladenum2)AeroFx","B$(bladenum2)AeroFy","B$(bladenum2)AeroFz"]
+# # headerNames = ["AB4N006Vrel","AB1N002Alpha","AB4N006STVx","AB4N006STVy","AB4N006STVz","B1AeroFx","B1AeroFy","B1AeroFz"]
+# bladenum= "1"
+# node = "018"
+# bladenum2= bladenum#"1"
+# bladenum3 = 1
+# # headerNames1 = ["B$(bladenum)AeroFxg","B$(bladenum)AeroFyg","B$(bladenum)AeroFzg","B$(bladenum)AeroMxg","B$(bladenum)AeroMyg","B$(bladenum)AeroMzg"] #["AB$(bladenum)N$(node)Vrel","AB$(bladenum)N$(node)Alpha","AB$(bladenum)N$(node)STVx","AB$(bladenum)N$(node)STVy","AB$(bladenum)N$(node)STVz","AB$(bladenum)N$(node)Fn","AB$(bladenum)N$(node)Ft","B$(bladenum)AeroFx","B$(bladenum)AeroFy","B$(bladenum)AeroFz"]
+# # headerNames2 = ["B$(bladenum2)AeroFxg","B$(bladenum2)AeroFyg","B$(bladenum2)AeroFzg","B$(bladenum2)AeroMxg","B$(bladenum2)AeroMyg","B$(bladenum2)AeroMzg"] #["AB$(bladenum2)N$(node)Vrel","AB$(bladenum2)N$(node)Alpha","AB$(bladenum2)N$(node)STVx","AB$(bladenum2)N$(node)STVy","AB$(bladenum2)N$(node)STVz","AB$(bladenum2)N$(node)Fn","AB$(bladenum2)N$(node)Ft","B$(bladenum2)AeroFx","B$(bladenum2)AeroFy","B$(bladenum2)AeroFz"]
 
-headerNames1 = headerNames2 = ["AB$(bladenum)N$(node)Ft"]#B1Azimuth"]#AB1N001Alpha"]#["B$(bladenum)AeroFxg"]
+# headerNames1 = headerNames2 = ["AB$(bladenum)N$(node)Ft"]#B1Azimuth"]#AB1N001Alpha"]#["B$(bladenum)AeroFxg"]
 
-plotdata1_standalone = zeros(length(headerNames1),length(standalone_AD[:,1]))
-plotdata1_library = zeros(length(headerNames1),length(standalone_AD[:,1]))
-time_library = zeros(length(standalone_AD[:,1]))
+# plotdata1_standalone = zeros(length(headerNames1),length(standalone_AD[:,1]))
+# plotdata1_library = zeros(length(headerNames1),length(standalone_AD[:,1]))
+# time_library = zeros(length(standalone_AD[:,1]))
 
-plotdata1_library_stiff_one_way = zeros(length(headerNames1),length(standalone_AD[:,1]))
-time_library_stiff_one_way = zeros(length(standalone_AD[:,1]))
+# plotdata1_library_stiff_one_way = zeros(length(headerNames1),length(standalone_AD[:,1]))
+# time_library_stiff_one_way = zeros(length(standalone_AD[:,1]))
 
 
-# Since we did correction stepping with the library, we need to filter out each unique timestep, preferrably the aeroDistLoadsArrayTime
-for (idx_t_standalone, time) in enumerate(standalone_AD[1:end-1,1])
+# # Since we did correction stepping with the library, we need to filter out each unique timestep, preferrably the aeroDistLoadsArrayTime
+# for (idx_t_standalone, time) in enumerate(standalone_AD[1:end-1,1])
 
-    idx_t_library = findlast(x->x==time,library_ADside[:,1])
-    time_library[idx_t_standalone] = library_ADside[idx_t_library,1]
+#     idx_t_library = findlast(x->x==time,library_ADside[:,1])
+#     time_library[idx_t_standalone] = library_ADside[idx_t_library,1]
     
-    # idx_t_library_stiff_one_way = findlast(x->x==time,library_ADside_owens_stiff_one_way[:,1])
-    # time_library_stiff_one_way[idx_t_standalone] = library_ADside_owens_stiff_one_way[idx_t_library_stiff_one_way,1]
+#     # idx_t_library_stiff_one_way = findlast(x->x==time,library_ADside_owens_stiff_one_way[:,1])
+#     # time_library_stiff_one_way[idx_t_standalone] = library_ADside_owens_stiff_one_way[idx_t_library_stiff_one_way,1]
 
-    # println(idx_t_library)
-    #AOA, structural velocity, and structural loads
-    for (ihead,header_name) in enumerate(headerNames1)
-        header_idx_standalone = findfirst(x->x==header_name,header_standalone)
+#     # println(idx_t_library)
+#     #AOA, structural velocity, and structural loads
+#     for (ihead,header_name) in enumerate(headerNames1)
+#         header_idx_standalone = findfirst(x->x==header_name,header_standalone)
         
-        header_idx_library = findfirst(x->x==headerNames2[ihead],header_library)
+#         header_idx_library = findfirst(x->x==headerNames2[ihead],header_library)
         
-        # println("$header_name $header_idx_standalone $header_idx_library")
+#         # println("$header_name $header_idx_standalone $header_idx_library")
 
-        # @test isapprox(standalone_AD[idx_t_standalone,header_idx[2]],library_ADside[idx_t_library,header_idx[2]])
-        plotdata1_standalone[ihead,idx_t_standalone] = standalone_AD[idx_t_standalone,header_idx_standalone[2]]
-        plotdata1_library[ihead,idx_t_standalone] = library_ADside[idx_t_library,header_idx_library[2]]
+#         # @test isapprox(standalone_AD[idx_t_standalone,header_idx[2]],library_ADside[idx_t_library,header_idx[2]])
+#         plotdata1_standalone[ihead,idx_t_standalone] = standalone_AD[idx_t_standalone,header_idx_standalone[2]]
+#         plotdata1_library[ihead,idx_t_standalone] = library_ADside[idx_t_library,header_idx_library[2]]
 
-        # header_idx_library_owens_stiff_one_way = findfirst(x->x==headerNames2[ihead],header_library_owens_stiff_one_way)
-        # plotdata1_library_stiff_one_way[ihead,idx_t_standalone] = library_ADside_owens_stiff_one_way[idx_t_library_stiff_one_way,header_idx_library_owens_stiff_one_way[2]]
+#         # header_idx_library_owens_stiff_one_way = findfirst(x->x==headerNames2[ihead],header_library_owens_stiff_one_way)
+#         # plotdata1_library_stiff_one_way[ihead,idx_t_standalone] = library_ADside_owens_stiff_one_way[idx_t_library_stiff_one_way,header_idx_library_owens_stiff_one_way[2]]
         
-    end
-end
+#     end
+# end
 
-import PyPlot
-PyPlot.pygui(true)
-PyPlot.rc("figure", figsize=(15, 15))
-PyPlot.close("all")
+# import PyPlot
+# PyPlot.pygui(true)
+# PyPlot.rc("figure", figsize=(15, 15))
+# PyPlot.close("all")
 
-for (ihead,header_name) in enumerate(headerNames1)
+# for (ihead,header_name) in enumerate(headerNames1)
 
-    PyPlot.figure()
-    PyPlot.plot(standalone_AD[1:end-1,1],plotdata1_standalone[ihead,1:end-1],"k-",label="standalone")
-    PyPlot.plot(time_library[1:end-1].+dt*2,plotdata1_library[ihead,1:end-1],color=plot_cycle[1],":",label="aerodyn side library")
+#     PyPlot.figure()
+#     PyPlot.plot(standalone_AD[1:end-1,1],plotdata1_standalone[ihead,1:end-1],"k-",label="standalone")
+#     PyPlot.plot(time_library[1:end-1].+dt*2,plotdata1_library[ihead,1:end-1],color=plot_cycle[1],":",label="aerodyn side library")
 
-    # PyPlot.plot(time_library[1:end-1].+dt,fx_owensside[1:end-1],color=plot_cycle[1],"--",label="xowens side library")
+#     # PyPlot.plot(time_library[1:end-1].+dt,fx_owensside[1:end-1],color=plot_cycle[1],"--",label="xowens side library")
 
     
-    PyPlot.ylabel(header_name)
-    PyPlot.xlabel("Time (s)")
-    PyPlot.legend()
-    # PyPlot.ylim([-4000,4000])
-end
+#     PyPlot.ylabel(header_name)
+#     PyPlot.xlabel("Time (s)")
+#     PyPlot.legend()
+#     # PyPlot.ylim([-4000,4000])
+# end

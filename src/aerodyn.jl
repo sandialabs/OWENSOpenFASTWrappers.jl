@@ -751,7 +751,9 @@ Initializes aerodynamic models and sets up backend persistent memory to simplify
 * `adi_dt`: timestep
 * `adi_tmax`: maximum time
 * `hubPos`: hub position in global coordinates, 3-vector (m). NOTE: AD15 assumes a different hub location than OWENS
-* `hubAngle`: hub axis angle, 3-vector (radians) #FIXME it seems like degrees is actually correct...
+* `hubAngle`: hub axis angle, 3-vector (deg)
+* `nacPos`: nacelle position in global coordinates, 3-vector (m). NOTE: AD15 assumes a different hub location than OWENS
+* `nacAngle`: nacelle axis angle, 3-vector (deg)
 * `numTurbines`: number of turbines
 
 
@@ -786,6 +788,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     isVAWT      = true, #TODO: mixed hawts and vawts?
     adi_debug   = 0,                              #0 is no debug outputs
     nacPos      = [[0,0,0]],                      # m
+    nacAngle      = [[0,0,0]],                      # m
     )
 
     # load library and set number of turbines
@@ -815,7 +818,8 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         refPosTmp=Float32.(refPos[iturb][1:3])
         # nacelle -- not actually used here since we don't consider loads.
         nacPosTmp = Float32.(nacPos[iturb][1:3])
-        nacOrient = Float64.([1,0,0,0,1,0,0,0,1])
+        nacOrient = createGeneralTransformationMatrix(nacAngle[iturb],[1,2,3])
+        # nacOrient = Float64.([1,0,0,0,1,0,0,0,1])
         # hub -- align to origin for now
         hubPosTmp = Float32.(hubPos[iturb][1:3])
         # hubOrient = Float64.([1,0,0,0,1,0,0,0,1])
@@ -827,11 +831,11 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         azi     = 0.0
 
         # blade roots (2nd is rotated 180 degrees about z)
-        rootPos     = getRootPos(turbine[iturb],u_j,azi,hubPosTmp,hubAngle[iturb])       # get root positions of all AD15 blades (blades + struts in OWENS)
+        rootPos     = getRootPos(turbine[iturb],u_j,azi,nacPosTmp,hubPosTmp,hubAngle[iturb])       # get root positions of all AD15 blades (blades + struts in OWENS)
         rootOrient  = getRootDCM(turbine[iturb],u_j,azi,hubAngle[iturb])              # get orientations of all AD15 blades   (blades + struts in OWENS)
 
         # Multiple mesh points along all blades for full structural mesh representation in ADI
-        meshPos      = getAD15MeshPos(turbine[iturb],u_j,azi,hubPosTmp,hubAngle[iturb])  # get positions of all AD15 nodes (blades + struts in OWENS)
+        meshPos      = getAD15MeshPos(turbine[iturb],u_j,azi,nacPosTmp,hubPosTmp,hubAngle[iturb])  # get positions of all AD15 nodes (blades + struts in OWENS)
         meshOrient   = getAD15MeshDCM(turbine[iturb],u_j,azi,hubAngle[iturb])         # get orientations of all AD15 blades   (blades + struts in OWENS)
 
 
@@ -847,13 +851,13 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         # meshAcc   = zeros(Float32,2*size(meshPos,1),size(meshPos,2))
 
               
-        rootVel,rootAcc = getRootVelAcc(turbine[iturb],rootPos,udot_j,uddot_j,azi,omega[iturb],zero(omega[iturb]),hubPosTmp,hubAngle[iturb],hubVel,hubAcc)       # get root vel/acc of all AD15 blades   (blades + struts in OWENS)
+        rootVel,rootAcc = getRootVelAcc(turbine[iturb],rootPos,udot_j,uddot_j,azi,omega[iturb],zero(omega[iturb]),nacPosTmp,hubPosTmp,hubAngle[iturb],hubVel,hubAcc)       # get root vel/acc of all AD15 blades   (blades + struts in OWENS)
 
-        meshVel,meshAcc = getAD15MeshVelAcc(turbine[iturb],meshPos,udot_j,uddot_j,azi,omega[iturb],zero(omega[iturb]),hubPosTmp,hubAngle[iturb],hubVel,hubAcc)   # get mesh vel/acc of all AD15 blades   (blades + struts in OWENS)
+        meshVel,meshAcc = getAD15MeshVelAcc(turbine[iturb],meshPos,udot_j,uddot_j,azi,omega[iturb],zero(omega[iturb]),nacPosTmp,hubPosTmp,hubAngle[iturb],hubVel,hubAcc)   # get mesh vel/acc of all AD15 blades   (blades + struts in OWENS)
 
         # hub
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
-        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi)        
+        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi)    
         hubOrient    = vec(CG2H)
 
         # Initialize outputs and resulting mesh forces
@@ -982,23 +986,28 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
     global turbine
     global turbenv
     global turbstruct
-
+    
     numTurbines = length(turbine)
     for iturb = 1:numTurbines
-
+        nacPos = turbstruct[iturb].nacPos #TODO: nacell position deformation
         # Root
-        turbstruct[iturb].rootPos                    = getRootPos(turbine[iturb],u_j[iturb],azi[iturb],hubPos[iturb],hubAngle[iturb])                                                                         # get root positions of all AD15 blades (blades + struts in OWENS)
+        turbstruct[iturb].rootPos                    = getRootPos(turbine[iturb],u_j[iturb],azi[iturb],nacPos,hubPos[iturb],hubAngle[iturb])                                                                         # get root positions of all AD15 blades (blades + struts in OWENS)
         turbstruct[iturb].rootOrient                 = getRootDCM(turbine[iturb],u_j[iturb],azi[iturb],hubAngle[iturb])                                                                                # get orientations of all AD15 blades   (blades + struts in OWENS)
-        turbstruct[iturb].rootVel,turbstruct[iturb].rootAcc = getRootVelAcc(turbine[iturb],turbstruct[iturb].rootPos,udot_j[iturb],uddot_j[iturb],azi[iturb],Omega_rad[iturb],OmegaDot_rad[iturb],hubPos[iturb],hubAngle[iturb],hubVel[iturb],hubAcc[iturb])       # get root vel/acc of all AD15 blades   (blades + struts in OWENS)
+        turbstruct[iturb].rootVel,turbstruct[iturb].rootAcc = getRootVelAcc(turbine[iturb],turbstruct[iturb].rootPos,udot_j[iturb],uddot_j[iturb],azi[iturb],Omega_rad[iturb],OmegaDot_rad[iturb],nacPos,hubPos[iturb],hubAngle[iturb],hubVel[iturb],hubAcc[iturb])       # get root vel/acc of all AD15 blades   (blades + struts in OWENS)
 
         # Mesh
-        turbstruct[iturb].meshPos                    = getAD15MeshPos(turbine[iturb],u_j[iturb],azi[iturb],hubPos[iturb],hubAngle[iturb])                                                                     # get mesh positions of all AD15 blades (blades + struts in OWENS)
+        turbstruct[iturb].meshPos                    = getAD15MeshPos(turbine[iturb],u_j[iturb],azi[iturb],nacPos,hubPos[iturb],hubAngle[iturb])                                                                     # get mesh positions of all AD15 blades (blades + struts in OWENS)
         turbstruct[iturb].meshOrient                 = getAD15MeshDCM(turbine[iturb],u_j[iturb],azi[iturb],hubAngle[iturb])                                                                            # get orientations of all AD15 blades   (blades + struts in OWENS)
-        turbstruct[iturb].meshVel,turbstruct[iturb].meshAcc = getAD15MeshVelAcc(turbine[iturb],turbstruct[iturb].meshPos,udot_j[iturb],uddot_j[iturb],azi[iturb],Omega_rad[iturb],OmegaDot_rad[iturb],hubPos[iturb],hubAngle[iturb],hubVel[iturb],hubAcc[iturb])   # get mesh vel/acc of all AD15 blades   (blades + struts in OWENS)
+        turbstruct[iturb].meshVel,turbstruct[iturb].meshAcc = getAD15MeshVelAcc(turbine[iturb],turbstruct[iturb].meshPos,udot_j[iturb],uddot_j[iturb],azi[iturb],Omega_rad[iturb],OmegaDot_rad[iturb],nacPos,hubPos[iturb],hubAngle[iturb],hubVel[iturb],hubAcc[iturb])   # get mesh vel/acc of all AD15 blades   (blades + struts in OWENS)
 
         # hub
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
-        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi[iturb])
+        # CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi[iturb])
+        # if turbine[iturb].isVAWT
+        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi[iturb])    
+        # else   
+        #     CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb]+[0.0,90.0,0.0], -azi[iturb]) 
+        # end 
         turbstruct[iturb].hubPos       = hubPos[iturb]
         turbstruct[iturb].hubOrient    = vec(CG2H)
         turbstruct[iturb].hubVel       = hubVel[iturb]
@@ -1145,7 +1154,7 @@ end
 
 
 """
-getRootPos(turbine,u_j,azi,hubPos,hubAngle)
+getRootPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
 
 Extract the root positions for all ADI blades
 
@@ -1153,10 +1162,11 @@ Extract the root positions for all ADI blades
 * `turbine`:    turbine data storage
 * `u_j`:        mesh displacements -- in hub coordinates, (m,rad)
 * `azi`:        current azimuth (rad)
+* `nacPos`:     current global nacPos (x,y,z) vector (m)
 * `hubPos`:     current global hubPos (x,y,z) vector (m)
 * `hubAngle`:   3 angle set for hub orientation (rad)
 """
-function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
+function getRootPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
     RootPos     = zeros(Float32,3,turbine.adi_numbl)
     # conversion from hub coordinates to global
     CG2H = calcHubRotMat(turbine,hubAngle, -azi)
@@ -1168,7 +1178,7 @@ function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
         y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
         z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
         #println("Blade $ibld bottom at [$x,$y,$z] at index $idx")
-        RootPos[:,ibld] = [x y z] * CH2G
+        RootPos[:,ibld] = [x y z] * CH2G + nacPos' + hubPos'
     end
     if turbine.adi_numbl>turbine.B #i.e. if we have struts TODO: N-struts
         # bottom strut
@@ -1178,7 +1188,7 @@ function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
             y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
             z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
             #println("Blade strut $ibld bottom at [$x,$y,$z] at index $idx")
-            RootPos[:,ibld] = [x y z] * CH2G
+            RootPos[:,ibld] = [x y z] * CH2G + nacPos' + hubPos'
         end
         # top strut
         for ibld = 2*turbine.B+1:3*turbine.B
@@ -1187,14 +1197,14 @@ function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
             y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
             z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
             #println("Blade strut $ibld top at [$x,$y,$z] at index $idx")
-            RootPos[:,ibld] = [x y z] * CH2G
+            RootPos[:,ibld] = [x y z] * CH2G + nacPos' + hubPos'
         end
     end
     return RootPos
 end
 
 """
-getRootVelAcc(turbine,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad)
+getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,nacPos,hubPos,hubAngle,hubVel,hubAcc)
 
 Extract the root velocities and accelerations for all ADI blades
 
@@ -1204,12 +1214,13 @@ Extract the root velocities and accelerations for all ADI blades
 * `azi`:            current azimuth (rad)
 * `Omega_rad`:      angular velocity of hub about hub axis (rad/s)
 * `OmegaDot_rad`:   angular acceleration of hub about hub axis (rad/s^2)
+* `nacPos`:         current global nacPos (x,y,z) vector (m)
 * `hubPos`:         current global hubPos (x,y,z) vector (m)
 * `hubAngle`:       3 angle set for hub orientation (rad)
 * `hubVel`:         hub velocity in global coords, 6-vector (m/s,rad/s)
 * `hubAcc`:         hub acceleration in global coords, 6-vector (m/s^2,rad/s^2)
 """
-function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngle,hubVel,hubAcc)
+function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,nacPos,hubPos,hubAngle,hubVel,hubAcc)
     RootVel     = zeros(Float32,6,turbine.adi_numbl)
     RootAcc     = zeros(Float32,6,turbine.adi_numbl)
     ### 1. calculate relative velocity from mesh distortions
@@ -1261,15 +1272,15 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     for ibld = 1:size(RootVel,2)
         # Global coordinates
         # tangential velocity and acceleration, based on distance to hub axis 
-        TanVel = cross(    Omega_rad*hubAxis, (rootPos[1:3,ibld]-hubPos)) / norm(hubAxis)
-        TanAcc = cross( OmegaDot_rad*hubAxis, (rootPos[1:3,ibld]-hubPos)) / norm(hubAxis)
+        TanVel = cross(    Omega_rad*hubAxis, (rootPos[1:3,ibld]-nacPos-hubPos)) / norm(hubAxis)
+        TanAcc = cross( OmegaDot_rad*hubAxis, (rootPos[1:3,ibld]-nacPos-hubPos)) / norm(hubAxis)
         RootVel[1:3,ibld] = RootVel[1:3,ibld] + TanVel
         RootVel[4:6,ibld] = RootVel[4:6,ibld] + Omega_rad*hubAxis
         RootVel[1:3,ibld] = RootVel[1:3,ibld] + TanAcc
         RootVel[4:6,ibld] = RootVel[4:6,ibld] + OmegaDot_rad*hubAxis
     end
 
-    ### 3. add in contributions from hub motion in global coordinates
+    ### 3. add in contributions from hub motion in global coordinates #TODO: nac velocity
     for ibld = 1:size(RootVel,2)
         RootVel[1:3,ibld] = RootVel[1:3,ibld] + hubVel[1:3]
         RootVel[4:6,ibld] = RootVel[4:6,ibld] + hubVel[4:6]     # rad/s
@@ -1287,7 +1298,7 @@ Find the number of mesh points we will pass
 """
 function getAD15numMeshNodes(bladeIdx)
     # Find number of nodes -- note that we skip some OWENS mesh nodes along struts.  Also note that this method allows for a
-    # different number of nodes in each blade (OWENS does not allow this at present)
+    # different number of nodes in each blade
     numMeshNodes = 0
     for i=1:size(bladeIdx,1)
         numMeshNodes = numMeshNodes + abs(bladeIdx[i,2] - bladeIdx[i,1]) + 1     # include all nodes in range 
@@ -1296,7 +1307,7 @@ function getAD15numMeshNodes(bladeIdx)
 end
 
 """
-getAD15MeshPos(turbine,u_j,azi,hubPos,hubAangle)
+getAD15MeshPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
 
 Extract the mesh points for all the AD15 blades
   ordering here is important
@@ -1309,9 +1320,10 @@ Extract the mesh points for all the AD15 blades
 * `u_j`:        mesh displacements -- in hub coordinates, (m,rad)
 * `azi`:        current azimuth (rad)
 * `hubPos`:     current global hubPos (x,y,z) vector (m)
+* `nacPos`:     current global nacPos (x,y,z) vector (m)
 * `hubAngle`:   3 angle set for hub orientation (rad)
 """
-function getAD15MeshPos(turbine,u_j,azi,hubPos,hubAngle)
+function getAD15MeshPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
     #display(turbine.bladeIdx)
     MeshPos     = zeros(Float32,3,turbine.numMeshNodes)
     iNode = 1
@@ -1322,13 +1334,12 @@ function getAD15MeshPos(turbine,u_j,azi,hubPos,hubAngle)
     for ibld = 1:size(turbine.bladeIdx,1)
         npts = turbine.bladeIdx[ibld,2] - turbine.bladeIdx[ibld,1]
         sgn = 1*sign(npts)
-        #println("                   iBld: $ibld     npts: $npts     sgn: $sgn")
         for idx=turbine.bladeIdx[ibld,1]:sgn:turbine.bladeIdx[ibld,2]
             x=turbine.Mesh.x[idx] + u_j[(idx-1)*6+1]
             y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
             z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
-            #println("Blade $ibld at [$x,$y,$z], node $idx")
-            MeshPos[:,iNode] = [x y z] * CH2G
+
+            MeshPos[:,iNode] = [x y z] * CH2G + nacPos' + hubPos'
             iNode += 1
         end
     end
@@ -1336,7 +1347,7 @@ function getAD15MeshPos(turbine,u_j,azi,hubPos,hubAngle)
 end
 
 """
-getAD15MeshVelAcc(turbine,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad)
+getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,nacPos,hubPos,hubAngle,hubVel,hubAcc)
 
 Extract the mesh velocities and accelerations for all the AD15 blades
   ordering here is important
@@ -1354,11 +1365,12 @@ Extract the mesh velocities and accelerations for all the AD15 blades
 * `Omega_rad`:      angular velocity of hub about hub axis (rad/s)
 * `OmegaDot_rad`:   angular acceleration of hub about hub axis (rad/s^2)
 * `hubPos`:         current global hubPos (x,y,z) vector (m)
+* `nacPos`:         current global nacPos (x,y,z) vector (m)
 * `hubAngle`:       3 angle set for hub orientation (rad)
 * `hubVel`:         hub velocity in global coords (m/s,rad/s)
 * `hubAcc`:         hub acceleration in global coords (m/s^2,rad/s^2)
 """
-function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngle,hubVel,hubAcc)
+function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,nacPos,hubPos,hubAngle,hubVel,hubAcc)
     #display(turbine.bladeIdx)
     MeshVel     = zeros(Float32,6,turbine.numMeshNodes)
     MeshAcc     = zeros(Float32,6,turbine.numMeshNodes)
@@ -1392,8 +1404,8 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
 #FIXME: missing tangential velocity components due to hub rotational velocity not about hub axis
             ### 2. Tangential velocity due to hub rotation
             # tangential velocity and acceleration, based on distance to hub axis 
-            Vel = cross(    Omega_rad*hubAxis, (meshPos[1:3,iNode]-hubPos)) / norm(hubAxis)
-            Acc = cross( OmegaDot_rad*hubAxis, (meshPos[1:3,iNode]-hubPos)) / norm(hubAxis)
+            Vel = cross(    Omega_rad*hubAxis, (meshPos[1:3,iNode]-nacPos-hubPos)) / norm(hubAxis)
+            Acc = cross( OmegaDot_rad*hubAxis, (meshPos[1:3,iNode]-nacPos-hubPos)) / norm(hubAxis)
             MeshVel[1:3,iNode] = MeshVel[1:3,iNode] + Vel
             MeshVel[4:6,iNode] = MeshVel[4:6,iNode] + Omega_rad*hubAxis
             MeshAcc[1:3,iNode] = MeshAcc[1:3,iNode] + Acc
@@ -1683,9 +1695,10 @@ function calcHubRotMat(turbine,ptfmRot, azi_j)
     #     rot_axis = 1
     # end
     # CN2P = transMat(ptfmRot[1], ptfmRot[2], ptfmRot[3])
-    CN2P = createGeneralTransformationMatrix(ptfmRot,[1,2,3])
     CP2H = createGeneralTransformationMatrix([azi_j*180/pi],[rot_axis])
-    CN2H = CN2P*CP2H
+    CN2P = createGeneralTransformationMatrix(ptfmRot,[1,2,3])
+    # Since we are modeling the rotor in the VAWT frame of reference, rotate about the azimuth, then rotate the hub 
+    CN2H = CP2H*CN2P
     return CN2H
 end
 
