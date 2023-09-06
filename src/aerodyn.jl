@@ -1160,7 +1160,7 @@ function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
     RootPos     = zeros(Float32,3,turbine.adi_numbl)
     # conversion from hub coordinates to global
     CG2H = calcHubRotMat(turbine,hubAngle, -azi)
-    CH2G = transpose(CG2H)
+    CH2G = CG2H
     # blades
     for ibld = 1:turbine.B
         idx=turbine.bladeIdx[ibld,1]
@@ -1168,7 +1168,7 @@ function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
         y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
         z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
         #println("Blade $ibld bottom at [$x,$y,$z] at index $idx")
-        RootPos[:,ibld] = CH2G * [x; y; z]
+        RootPos[:,ibld] = [x y z] * CH2G
     end
     if turbine.adi_numbl>turbine.B #i.e. if we have struts TODO: N-struts
         # bottom strut
@@ -1178,7 +1178,7 @@ function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
             y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
             z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
             #println("Blade strut $ibld bottom at [$x,$y,$z] at index $idx")
-            RootPos[:,ibld] = CH2G * [x; y; z]
+            RootPos[:,ibld] = [x y z] * CH2G
         end
         # top strut
         for ibld = 2*turbine.B+1:3*turbine.B
@@ -1187,7 +1187,7 @@ function getRootPos(turbine,u_j,azi,hubPos,hubAngle)
             y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
             z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
             #println("Blade strut $ibld top at [$x,$y,$z] at index $idx")
-            RootPos[:,ibld] = CH2G * [x; y; z]
+            RootPos[:,ibld] = [x y z] * CH2G
         end
     end
     return RootPos
@@ -1219,34 +1219,34 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     # else
     #     CG2H = calcHubRotMat(turbine,hubAngle, -azi)
     # end
-    CH2G = transpose(CG2H)
+    CH2G = CG2H
     # blades
     for ibld = 1:turbine.B
         tmp=turbine.bladeIdx[ibld,1]
         idx=(tmp-1)*6   # just before the node of interest
-        RootVel[1:3,ibld] = CH2G *  udot_j[idx+1:idx+3]         # translation Vel (m/2)
-        RootVel[4:6,ibld] = CH2G *  udot_j[idx+4:idx+6]         # rotation    Vel (rad/s)
-        RootAcc[1:3,ibld] = CH2G * uddot_j[idx+1:idx+3]         # translation Acc (m/s^2)
-        RootAcc[4:6,ibld] = CH2G * uddot_j[idx+4:idx+6]         # rotation    Acc (rad/s^2)
+        RootVel[1:3,ibld] =  udot_j[idx+1:idx+3]' * CH2G         # translation Vel (m/2)
+        RootVel[4:6,ibld] =  udot_j[idx+4:idx+6]' * CH2G         # rotation    Vel (rad/s)
+        RootAcc[1:3,ibld] = uddot_j[idx+1:idx+3]' * CH2G         # translation Acc (m/s^2)
+        RootAcc[4:6,ibld] = uddot_j[idx+4:idx+6]' * CH2G         # rotation    Acc (rad/s^2)
     end
     if turbine.adi_numbl>turbine.B # if we have struts, TODO: N-struts
         # bottom strut
         for ibld = turbine.B+1:2*turbine.B
             tmp=turbine.bladeIdx[ibld,1]
             idx=(tmp-1)*6   # just before the node of interest
-            RootVel[1:3,ibld] = CH2G *  udot_j[idx+1:idx+3]         # translation Vel (m/2)
-            RootVel[4:6,ibld] = CH2G *  udot_j[idx+4:idx+6]         # rotation    Vel (rad/s)
-            RootAcc[1:3,ibld] = CH2G * uddot_j[idx+1:idx+3]         # translation Acc (m/s^2)
-            RootAcc[4:6,ibld] = CH2G * uddot_j[idx+4:idx+6]         # rotation    Acc (rad/s^2)
+            RootVel[1:3,ibld] =  udot_j[idx+1:idx+3]' * CH2G         # translation Vel (m/2)
+            RootVel[4:6,ibld] =  udot_j[idx+4:idx+6]' * CH2G         # rotation    Vel (rad/s)
+            RootAcc[1:3,ibld] = uddot_j[idx+1:idx+3]' * CH2G         # translation Acc (m/s^2)
+            RootAcc[4:6,ibld] = uddot_j[idx+4:idx+6]' * CH2G         # rotation    Acc (rad/s^2)
         end
         # top strut
         for ibld = 2*turbine.B+1:3*turbine.B
             tmp=turbine.bladeIdx[ibld,1]
             idx=(tmp-1)*6   # just before the node of interest
-            RootVel[1:3,ibld] = CH2G *  udot_j[idx+1:idx+3]         # translation Vel (m/2)
-            RootVel[4:6,ibld] = CH2G *  udot_j[idx+4:idx+6]         # rotation    Vel (rad/s)
-            RootAcc[1:3,ibld] = CH2G * uddot_j[idx+1:idx+3]         # translation Acc (m/s^2)
-            RootAcc[4:6,ibld] = CH2G * uddot_j[idx+4:idx+6]         # rotation    Acc (rad/s^2)
+            RootVel[1:3,ibld] =  udot_j[idx+1:idx+3]' * CH2G         # translation Vel (m/2)
+            RootVel[4:6,ibld] =  udot_j[idx+4:idx+6]' * CH2G         # rotation    Vel (rad/s)
+            RootAcc[1:3,ibld] = uddot_j[idx+1:idx+3]' * CH2G         # translation Acc (m/s^2)
+            RootAcc[4:6,ibld] = uddot_j[idx+4:idx+6]' * CH2G         # rotation    Acc (rad/s^2)
         end
     end
     ### 2. Tangential velocity due to hub rotation
@@ -1317,7 +1317,7 @@ function getAD15MeshPos(turbine,u_j,azi,hubPos,hubAngle)
     iNode = 1
     # conversion from hub coordinates to global
     CG2H = calcHubRotMat(turbine,hubAngle, azi)
-    CH2G = transpose(CG2H)
+    CH2G = CG2H
     # blades, bottom struts, top struts
     for ibld = 1:size(turbine.bladeIdx,1)
         npts = turbine.bladeIdx[ibld,2] - turbine.bladeIdx[ibld,1]
@@ -1328,7 +1328,7 @@ function getAD15MeshPos(turbine,u_j,azi,hubPos,hubAngle)
             y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
             z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
             #println("Blade $ibld at [$x,$y,$z], node $idx")
-            MeshPos[:,iNode] = CH2G * [x; y; z]
+            MeshPos[:,iNode] = [x y z] * CH2G
             iNode += 1
         end
     end
@@ -1368,7 +1368,7 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
     # else
     #     CG2H = calcHubRotMat(turbine,hubAngle, -azi)
     # end
-    CH2G = transpose(CG2H)
+    CH2G = CG2H
 
     # hub axis vector in global coordinates
     # if turbine.isVAWT
@@ -1384,10 +1384,10 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
         for tmpIdx=turbine.bladeIdx[ibld,1]:sgn:turbine.bladeIdx[ibld,2]
             idx=(tmpIdx-1)*6   # just before the node of interest
             ### 1. relative velocity from mesh distortions
-            MeshVel[1:3,iNode] = CH2G *  udot_j[idx+1:idx+3]     # translation Vel (m/2)
-            MeshVel[4:6,iNode] = CH2G *  udot_j[idx+4:idx+6]     # rotation    Vel (rad/s)
-            MeshAcc[1:3,iNode] = CH2G * uddot_j[idx+1:idx+3]     # translation Acc (m/s^2)
-            MeshAcc[4:6,iNode] = CH2G * uddot_j[idx+4:idx+6]     # rotation    Acc (rad/s^2)
+            MeshVel[1:3,iNode] =  udot_j[idx+1:idx+3]' * CH2G     # translation Vel (m/2)
+            MeshVel[4:6,iNode] =  udot_j[idx+4:idx+6]' * CH2G     # rotation    Vel (rad/s)
+            MeshAcc[1:3,iNode] = uddot_j[idx+1:idx+3]' * CH2G     # translation Acc (m/s^2)
+            MeshAcc[4:6,iNode] = uddot_j[idx+4:idx+6]' * CH2G     # rotation    Acc (rad/s^2)
 
 #FIXME: missing tangential velocity components due to hub rotational velocity not about hub axis
             ### 2. Tangential velocity due to hub rotation
@@ -1439,9 +1439,7 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
     RootOrient  = zeros(9,turbine.adi_numbl)
     # conversion from hub coordinates to global
     CG2H = calcHubRotMat(turbine,hubAngle, azi)
-    CH2G = transpose(CG2H)
-
-
+    CH2G = CG2H
 
     for i=1:size(turbine.bladeElem,1)
         idx=turbine.bladeElem[i]    #,1]
@@ -1453,29 +1451,30 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
         #     sin(angle) cos(angle)]
 
         # XY = [shapeX;; shapeY]*Rz'
-        # if turbine.isVAWT
-        angle_axes = [2,1,2,3]
-        ang1 = [-90,Twist,Theta,Psi]
-        ang2 = [90,Twist,Theta,Psi]
-        # else
-        #     angle_axes = [3,2,1,2]
-        #     ang1 = [Psi, Theta, Twist, -90]
-        #     ang2 = [Psi, Theta, Twist,  90]
-        # end
+        if turbine.isVAWT
+            angle_axes = [2,1,2,3]
+            ang1 = [-90,Twist,Theta,Psi]
+            ang2 = [90,Twist,Theta,Psi]
+        else
+            angle_axes = [3,2,1]
+            ang1 = [Psi,90.0,Twist*0]
+            ang2 = [Twist,Theta,Psi]
+        end
 
         if i<=turbine.B
             #FIME: the following is for a CCW spinning rotor.  some things need changing for a CW spinning rotor.
             # flip +z towards X, then apply Twist (Roll, Rx) -> Theta (Pitch, Ry) -> Psi (Yaw, Rz) 
+            #TODO: connection deformations
             if turbine.isVAWT
                 ang1[3] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
                 ang1[2] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
             else
-                angle_axes = reverse([3,2,1,2])
-                ang1 = reverse([Psi, Theta*0.0, Twist*0.0, 90])
+                # ang1[3] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
+                # ang1[2] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
             end
-            DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)
+            DCM = createGeneralTransformationMatrix(ang1,angle_axes) * CH2G
         else
-            DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes)'
+            DCM = createGeneralTransformationMatrix(ang2,angle_axes)' * CH2G
         end
         RootOrient[:,i] = vec(DCM)
     end
@@ -1678,11 +1677,11 @@ function frame_convert(init_frame_vals, trans_mat)
 end
 
 function calcHubRotMat(turbine,ptfmRot, azi_j)
-    if turbine.isVAWT
+    # if turbine.isVAWT
         rot_axis = 3
-    else
-        rot_axis = 1
-    end
+    # else
+    #     rot_axis = 1
+    # end
     # CN2P = transMat(ptfmRot[1], ptfmRot[2], ptfmRot[3])
     CN2P = createGeneralTransformationMatrix(ptfmRot,[1,2,3])
     CP2H = createGeneralTransformationMatrix([azi_j*180/pi],[rot_axis])
