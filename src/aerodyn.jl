@@ -1119,7 +1119,7 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
             CG2H = calcHubRotMat(turbine[iturb],zeros(3), azi[iturb])
             for iNode=1:mesh[iturb].numNodes
                 FMg = [Fx[iturb][iNode] Fy[iturb][iNode] Fz[iturb][iNode] Mx[iturb][iNode] My[iturb][iNode] Mz[iturb][iNode]]
-                FM = frame_convert(FMg, CG2H)
+                FM = frame_convert(FMg, CG2H')
                 Fx[iturb][iNode,istep] = FM[1]
                 Fy[iturb][iNode,istep] = FM[2]
                 Fz[iturb][iNode,istep] = FM[3]
@@ -1558,8 +1558,8 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
 end
 
 
-### NOTE: the following are copied from ModelGen.jl/src/meshing_utilities.jl
-#          (I couldn't figure out how to use ModelGen here without a mess)
+### NOTE: the following are copied from OWENS.jl/src/meshing_utilities.jl
+#          (I couldn't figure out how to use OWENS here without a mess)
 """
 createGeneralTransformationMatrix(angleArray,axisArray)
 

@@ -2,7 +2,7 @@
 
 import FLOWMath
 import GyricFEA
-import ModelGen
+import OWENS
 import VAWTAero
 import OWENS
 
@@ -72,7 +72,7 @@ mymesh,myel,myort,myjoint,sectionPropsArray,mass_twr, mass_bld,
     stiff_twr, stiff_bld,RefArea,bld_precompinput,
     bld_precompoutput,plyprops_bld,numadIn_bld,lam_U_bld,lam_L_bld,
     twr_precompinput,twr_precompoutput,plyprops_twr,numadIn_twr,lam_U_twr,lam_L_twr,aeroForces,RefArea,
-    mass_breakout_blds,mass_breakout_twr,bladeIdx,bladeElem,system,assembly,sections = ModelGen.setupOWENShawt(VAWTAero,path;
+    mass_breakout_blds,mass_breakout_twr,bladeIdx,bladeElem,system,assembly,sections = OWENS.setupOWENShawt(VAWTAero,path;
     rho,
     Nslices,
     RPM,
@@ -264,71 +264,71 @@ OpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,[sh
         isVAWT = false
         )
 
-# Time marching
-ForceValHist = zeros(Int(mymesh.numNodes*6),length(ts[1:end-1]))
-AziHist = zeros(length(ts[1:end-1]))
-Fzhist = zeros(mymesh.numNodes,length(ts[1:end-1]))
+# # Time marching
+# ForceValHist = zeros(Int(mymesh.numNodes*6),length(ts[1:end-1]))
+# AziHist = zeros(length(ts[1:end-1]))
+# Fzhist = zeros(mymesh.numNodes,length(ts[1:end-1]))
 
-for (tidx, t) in enumerate(ts[1:end-1])
-    # println("time $t")
-    for correction = 1:num_corrections+1
-        # println("correction $correction")
+# for (tidx, t) in enumerate(ts[1:end-1])
+#     # println("time $t")
+#     for correction = 1:num_corrections+1
+#         # println("correction $correction")
 
-        #mapAD15(t,azi_j,mesh,advanceAD15)
-        azi_j = omega*(t+dt) # rad/s * s
-        AziHist[tidx] = azi_j
-        u_j     = zeros(mymesh.numNodes*6)
-        udot_j  = zeros(mymesh.numNodes*6)
-        uddot_j = zeros(mymesh.numNodes*6)
-        hubPos      = [0,0,Ht]                      # m
-        hubAngle    = [0,90,0.0]                       # rad
-        hubVel = zeros(6)
-        hubAcc = zeros(6)
-        OpenFASTWrappers.deformAD15([u_j],[udot_j],[uddot_j],[azi_j],[omega],[zero(omega)],[hubPos],[hubAngle],[hubVel],[hubAcc])
-        n_steps,Fx,Fy,Fz,Mx,My,Mz = OpenFASTWrappers.advanceAD15(t,[mymesh],azi_j)
-        Fzhist[:,tidx] = Fz[1][:,1]
-        # NOTE on AD15 advanceTurb values (Fx,Fy,Fz,Mx,My,Mz)
-        #       - forces/moments are in hub coordinates (converted in advanceAD15)
-        #       - array length is the number of OWENS mesh points
-        #       - This includes the struts (and could include tower when we add that to the AD15 interface)
+#         #mapAD15(t,azi_j,mesh,advanceAD15)
+#         azi_j = omega*(t+dt) # rad/s * s
+#         AziHist[tidx] = azi_j
+#         u_j     = zeros(mymesh.numNodes*6)
+#         udot_j  = zeros(mymesh.numNodes*6)
+#         uddot_j = zeros(mymesh.numNodes*6)
+#         hubPos      = [0,0,Ht]                      # m
+#         hubAngle    = [0,90,0.0]                       # rad
+#         hubVel = zeros(6)
+#         hubAcc = zeros(6)
+#         OpenFASTWrappers.deformAD15([u_j],[udot_j],[uddot_j],[azi_j],[omega],[zero(omega)],[hubPos],[hubAngle],[hubVel],[hubAcc])
+#         n_steps,Fx,Fy,Fz,Mx,My,Mz = OpenFASTWrappers.advanceAD15(t,[mymesh],azi_j)
+#         Fzhist[:,tidx] = Fz[1][:,1]
+#         # NOTE on AD15 advanceTurb values (Fx,Fy,Fz,Mx,My,Mz)
+#         #       - forces/moments are in hub coordinates (converted in advanceAD15)
+#         #       - array length is the number of OWENS mesh points
+#         #       - This includes the struts (and could include tower when we add that to the AD15 interface)
     
-        #     [~,~,timeLen] = size(aeroDistLoadsArrayTime)
+#         #     [~,~,timeLen] = size(aeroDistLoadsArrayTime)
         
     
-        # Map loads over from advanceTurb
-        for i=1:mymesh.numNodes
-            ForceValHist[(i-1)*6+1,tidx] = Fz[1][i,1]
-            ForceValHist[(i-1)*6+2,tidx] = Fy[1][i,1]
-            ForceValHist[(i-1)*6+3,tidx] = -Fx[1][i,1]
-            ForceValHist[(i-1)*6+4,tidx] = Mz[1][i,1]
-            ForceValHist[(i-1)*6+5,tidx] = My[1][i,1]
-            ForceValHist[(i-1)*6+6,tidx] = -Mx[1][i,1]
-        end
-        # DOFs are sequential through all nodes
-        ForceDof=collect(1:1:mymesh.numNodes*6)
-    end
+#         # Map loads over from advanceTurb
+#         for i=1:mymesh.numNodes
+#             ForceValHist[(i-1)*6+1,tidx] = Fz[1][i,1]
+#             ForceValHist[(i-1)*6+2,tidx] = Fy[1][i,1]
+#             ForceValHist[(i-1)*6+3,tidx] = -Fx[1][i,1]
+#             ForceValHist[(i-1)*6+4,tidx] = Mz[1][i,1]
+#             ForceValHist[(i-1)*6+5,tidx] = My[1][i,1]
+#             ForceValHist[(i-1)*6+6,tidx] = -Mx[1][i,1]
+#         end
+#         # DOFs are sequential through all nodes
+#         ForceDof=collect(1:1:mymesh.numNodes*6)
+#     end
 
-end
-println("End Aerodynamics")
-OpenFASTWrappers.endTurb()
+# end
+# println("End Aerodynamics")
+# OpenFASTWrappers.endTurb()
 
 
-# #########################################
-# ### Run STIFF one way coupling
-# #########################################
+#########################################
+### Run STIFF one way coupling
+#########################################
 
-# dt = 0.01
-# t_initial = t_initial = 0.0
-# t_max = 0.5
-# ts = collect(t_initial:dt:t_max)
-# numTS = length(ts)
+dt = 0.01
+t_initial = t_initial = 0.0
+t_max = 0.5
+ts = collect(t_initial:dt:t_max)
+numTS = length(ts)
 
-# mymesh.hubPos =  [0,0.0,137.0]#TODO: make this streamlined in the code initialization, consider putting it elsewhere.
-# mymesh.hubAngle = [0.0,-90,0.0]
+mymesh.hubPos =  [0,0.0,137.0]#TODO: make this streamlined in the code initialization, consider putting it elsewhere.
+mymesh.hubAngle = [0.0,-90,0.0]
 
-# #########################################
-# ### Create Aero Functions
-# #########################################
+#########################################
+### Create Aero Functions
+#########################################
 
 # #FIXME: this is a placeholder call returning no loads
 # OpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname_twoway,[shapeX],[shapeY],[B],[Ht],[mymesh],[myort],[bladeIdx],[bladeElem];
@@ -344,66 +344,66 @@ OpenFASTWrappers.endTurb()
 #         isVAWT = false
 #         )
 
-# # Routine for getting aero forces from aD15
+# Routine for getting aero forces from aD15
 
-# aeroForcesAD15(t,azi) = OWENS.mapAD15(t,azi,[mymesh],OpenFASTWrappers.advanceAD15;alwaysrecalc=true,verbosity=1)
-
-
-# ######################################
-# #### Perform Stiff One Way Test
-# #######################################
-
-# pBC = [1 1 0
-# 1 2 0
-# 1 3 0
-# 1 4 0
-# 1 5 0
-# 1 6 0]
-
-# model = OWENS.Inputs(;analysisType = "GX",
-#     tocp = [0.0,100000.1],
-#     Omegaocp = [RPM,RPM] ./ 60,
-#     turbineStartup = 0,
-#     generatorOn = false,
-#     useGeneratorFunction = false,
-#     numTS = numTS,
-#     delta_t = dt,
-#     aeroLoadsOn = 2.0,        # 1: one way; 1.5: aero once in iteration in 2 way; 2: two-way
-#     AD15On = true,
-#     topsideOn = true,
-#     interpOrder = 2)
-# model.iteration_parameters.MAXITER=20   # temporary for testing
-
-# feamodel = GyricFEA.FEAModel(;analysisType = "GX",
-#     outFilename = "none",
-#     joint = myjoint,
-#     platformTurbineConnectionNodeNumber = 1,
-#     pBC,
-#     nlOn = false,
-#     gravityOn = false, # turn off since aero only doesn't include gravity, also turned off rotational effects in setupxxx.jl
-#     numNodes = mymesh.numNodes,
-#     RayleighAlpha = 0.05,
-#     RayleighBeta = 0.05,
-#     return_all_reaction_forces = true,
-#     iterationType = "DI")
-
-# println("Running Unsteady")
-# t, aziHist,OmegaHist,OmegaDotHist,gbHist,gbDotHist,gbDotDotHist,
-# FReactionHist_stiff_one_way,FTwrBsHist,genTorque,genPower,torqueDriveShaft,uHist,
-# uHist_prp,epsilon_x_hist,epsilon_y_hist,epsilon_z_hist,kappa_x_hist,
-# kappa_y_hist,kappa_z_hist,FPtfmHist,FHydroHist,FMooringHist,
-# topFexternal_hist,rbDataHist = OWENS.Unsteady_Land(model;topModel=feamodel,topMesh=mymesh,topEl=myel,aero=aeroForcesAD15,
-#     deformAero=OpenFASTWrappers.deformAD15,system=system,assembly=assembly) #,meshcontrolfunction=mymeshcontrolfunction2,userDefinedGenerator=userDefinedGenerator,
+aeroForcesAD15(t,azi) = OWENS.mapAD15(t,azi,[mymesh],OpenFASTWrappers.advanceAD15;alwaysrecalc=true,verbosity=1)
 
 
+######################################
+#### Perform Stiff One Way Test
+#######################################
 
-# println("End Aerodynamics")
-# OpenFASTWrappers.endTurb()
-# ####################################################################################################################################################################################################################################
+pBC = [1 1 0
+1 2 0
+1 3 0
+1 4 0
+1 5 0
+1 6 0]
+
+model = OWENS.Inputs(;analysisType = "GX",
+    tocp = [0.0,100000.1],
+    Omegaocp = [RPM,RPM] ./ 60,
+    turbineStartup = 0,
+    generatorOn = false,
+    useGeneratorFunction = false,
+    numTS = numTS,
+    delta_t = dt,
+    aeroLoadsOn = 2.0,        # 1: one way; 1.5: aero once in iteration in 2 way; 2: two-way
+    AD15On = true,
+    topsideOn = true,
+    interpOrder = 2)
+model.iteration_parameters.MAXITER=20   # temporary for testing
+
+feamodel = GyricFEA.FEAModel(;analysisType = "GX",
+    outFilename = "none",
+    joint = myjoint,
+    platformTurbineConnectionNodeNumber = 1,
+    pBC,
+    nlOn = false,
+    gravityOn = false, # turn off since aero only doesn't include gravity, also turned off rotational effects in setupxxx.jl
+    numNodes = mymesh.numNodes,
+    RayleighAlpha = 0.05,
+    RayleighBeta = 0.05,
+    return_all_reaction_forces = true,
+    iterationType = "DI")
+
+println("Running Unsteady")
+t, aziHist,OmegaHist,OmegaDotHist,gbHist,gbDotHist,gbDotDotHist,
+FReactionHist_stiff_one_way,FTwrBsHist,genTorque,genPower,torqueDriveShaft,uHist,
+uHist_prp,epsilon_x_hist,epsilon_y_hist,epsilon_z_hist,kappa_x_hist,
+kappa_y_hist,kappa_z_hist,FPtfmHist,FHydroHist,FMooringHist,
+topFexternal_hist,rbDataHist = OWENS.Unsteady_Land(model;topModel=feamodel,topMesh=mymesh,topEl=myel,aero=aeroForcesAD15,
+    deformAero=OpenFASTWrappers.deformAD15,system=system,assembly=assembly) #,meshcontrolfunction=mymeshcontrolfunction2,userDefinedGenerator=userDefinedGenerator,
+
+
+
+println("End Aerodynamics")
+OpenFASTWrappers.endTurb()
+####################################################################################################################################################################################################################################
 
 
 # println("Saving VTK time domain files")
-# ModelGen.gyricFEA_VTK("$path/vtk/OWENS_test_HAWT1",t,uHist,system,assembly,sections;scaling=1)#,azi=aziHist)
+# OWENS.gyricFEA_VTK("$path/vtk/OWENS_test_HAWT1",t,uHist,system,assembly,sections;scaling=1)#,azi=aziHist)
 
 # ######################################
 # #### Plot Comparison
