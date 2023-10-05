@@ -782,7 +782,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     adi_tmax    = 10,                           # end time
     omega       = [0],                          # rad/s
     hubPos      = [[0,0,0]],                      # m
-    hubAngle    = [[0,0,0]],                      # rad
+    hubAngle    = [[0,0,0]],                      # deg
     numTurbines = 1,
     refPos      = [[0,0,0]],                      # turbine location
     isVAWT      = true, #TODO: mixed hawts and vawts?
@@ -857,8 +857,8 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
         # hub
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
-        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi)    
-        hubOrient    = vec(CG2H)
+        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb]+[0,-90,0], azi;rot_axis = 1)    
+        hubOrient    = vec(CG2H')
 
         # Initialize outputs and resulting mesh forces
         try
@@ -1004,13 +1004,13 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
         # CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi[iturb])
         # if turbine[iturb].isVAWT
-        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi[iturb])    
+        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb]+[0,-90,0], azi[iturb];rot_axis = 1)    
         # else   
         #     CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb]+[0.0,90.0,0.0], -azi[iturb]) 
         # end 
         turbstruct[iturb].hubPos       = hubPos[iturb]
-        turbstruct[iturb].hubOrient    = vec(CG2H)
-        turbstruct[iturb].hubVel       = hubVel[iturb]
+        turbstruct[iturb].hubOrient    = vec(CG2H') # this should have the rotation about x, so for a vawt, x is up.
+        turbstruct[iturb].hubVel       = hubVel[iturb] # this should be in global
         turbstruct[iturb].hubAcc       = hubAcc[iturb]
 
         # Nacelle   FIXME: add this later
@@ -1119,7 +1119,7 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
             CG2H = calcHubRotMat(turbine[iturb],zeros(3), azi[iturb])
             for iNode=1:mesh[iturb].numNodes
                 FMg = [Fx[iturb][iNode] Fy[iturb][iNode] Fz[iturb][iNode] Mx[iturb][iNode] My[iturb][iNode] Mz[iturb][iNode]]
-                FM = frame_convert(FMg, CG2H')
+                FM = frame_convert(FMg, CG2H)
                 Fx[iturb][iNode,istep] = FM[1]
                 Fy[iturb][iNode,istep] = FM[2]
                 Fz[iturb][iNode,istep] = FM[3]
@@ -1178,7 +1178,7 @@ function getRootPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
         y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
         z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
         #println("Blade $ibld bottom at [$x,$y,$z] at index $idx")
-        RootPos[:,ibld] = [x y z] * CH2G + nacPos' + hubPos'
+        RootPos[:,ibld] = [x y z] * CH2G + nacPos' #+ hubPos'
     end
     if turbine.adi_numbl>turbine.B #i.e. if we have struts TODO: N-struts
         # bottom strut
@@ -1188,7 +1188,7 @@ function getRootPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
             y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
             z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
             #println("Blade strut $ibld bottom at [$x,$y,$z] at index $idx")
-            RootPos[:,ibld] = [x y z] * CH2G + nacPos' + hubPos'
+            RootPos[:,ibld] = [x y z] * CH2G + nacPos' #+ hubPos'
         end
         # top strut
         for ibld = 2*turbine.B+1:3*turbine.B
@@ -1197,7 +1197,7 @@ function getRootPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
             y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
             z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
             #println("Blade strut $ibld top at [$x,$y,$z] at index $idx")
-            RootPos[:,ibld] = [x y z] * CH2G + nacPos' + hubPos'
+            RootPos[:,ibld] = [x y z] * CH2G + nacPos' #+ hubPos'
         end
     end
     return RootPos
@@ -1231,7 +1231,7 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     #     CG2H = calcHubRotMat(turbine,hubAngle, -azi)
     # end
     CH2G = CG2H
-    # blades
+    # blades #TODO: check the uddot, may be all 0s and shouldn't be, will be an issue for MHK turbines added mass
     for ibld = 1:turbine.B
         tmp=turbine.bladeIdx[ibld,1]
         idx=(tmp-1)*6   # just before the node of interest
@@ -1272,8 +1272,8 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     for ibld = 1:size(RootVel,2)
         # Global coordinates
         # tangential velocity and acceleration, based on distance to hub axis 
-        TanVel = cross(    Omega_rad*hubAxis, (rootPos[1:3,ibld]-nacPos-hubPos)) / norm(hubAxis)
-        TanAcc = cross( OmegaDot_rad*hubAxis, (rootPos[1:3,ibld]-nacPos-hubPos)) / norm(hubAxis)
+        TanVel = cross(    Omega_rad*hubAxis, (rootPos[1:3,ibld]-nacPos)) / norm(hubAxis)
+        TanAcc = cross( OmegaDot_rad*hubAxis, (rootPos[1:3,ibld]-nacPos)) / norm(hubAxis)
         RootVel[1:3,ibld] = RootVel[1:3,ibld] + TanVel
         RootVel[4:6,ibld] = RootVel[4:6,ibld] + Omega_rad*hubAxis
         RootVel[1:3,ibld] = RootVel[1:3,ibld] + TanAcc
@@ -1339,7 +1339,7 @@ function getAD15MeshPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
             y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
             z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
 
-            MeshPos[:,iNode] = [x y z] * CH2G + nacPos' + hubPos'
+            MeshPos[:,iNode] = [x y z] * CH2G + nacPos' #+ hubPos'
             iNode += 1
         end
     end
@@ -1380,7 +1380,7 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
     # else
     #     CG2H = calcHubRotMat(turbine,hubAngle, -azi)
     # end
-    CH2G = CG2H
+    CH2G = CG2H 
 
     # hub axis vector in global coordinates
     # if turbine.isVAWT
@@ -1403,9 +1403,10 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
 
 #FIXME: missing tangential velocity components due to hub rotational velocity not about hub axis
             ### 2. Tangential velocity due to hub rotation
-            # tangential velocity and acceleration, based on distance to hub axis 
-            Vel = cross(    Omega_rad*hubAxis, (meshPos[1:3,iNode]-nacPos-hubPos)) / norm(hubAxis)
-            Acc = cross( OmegaDot_rad*hubAxis, (meshPos[1:3,iNode]-nacPos-hubPos)) / norm(hubAxis)
+            # tangential velocity and acceleration, based on distance to hub axis
+            # TODO: meshPos-nacPos may be incorrect for the struts - velocity needs to be in the global FOR, and aerodyn converts via the orientations to go into blade orientation (STXv)
+            Vel = cross(    Omega_rad*hubAxis, (meshPos[1:3,iNode]-nacPos)) / norm(hubAxis)
+            Acc = cross( OmegaDot_rad*hubAxis, (meshPos[1:3,iNode]-nacPos)) / norm(hubAxis)
             MeshVel[1:3,iNode] = MeshVel[1:3,iNode] + Vel
             MeshVel[4:6,iNode] = MeshVel[4:6,iNode] + Omega_rad*hubAxis
             MeshAcc[1:3,iNode] = MeshAcc[1:3,iNode] + Acc
@@ -1688,9 +1689,9 @@ function frame_convert(init_frame_vals, trans_mat)
     return out_frame_vals
 end
 
-function calcHubRotMat(turbine,ptfmRot, azi_j)
+function calcHubRotMat(turbine,ptfmRot, azi_j;rot_axis = 3)
     # if turbine.isVAWT
-        rot_axis = 3
+        # rot_axis = 3
     # else
     #     rot_axis = 1
     # end
