@@ -995,7 +995,7 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
     
     numTurbines = length(turbine)
     for iturb = 1:numTurbines
-        nacPos = turbstruct[iturb].nacPos #TODO: nacell position deformation
+        nacPos = turbstruct[iturb].nacPos #TODO: nacelle position deformation
         # Root
         turbstruct[iturb].rootPos                    = getRootPos(turbine[iturb],u_j[iturb],azi[iturb],nacPos,hubPos[iturb],hubAngle[iturb])                                                                         # get root positions of all AD15 blades (blades + struts in OWENS)
         turbstruct[iturb].rootOrient                 = getRootDCM(turbine[iturb],u_j[iturb],azi[iturb],hubAngle[iturb])                                                                                # get orientations of all AD15 blades   (blades + struts in OWENS)
@@ -1289,9 +1289,7 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     ### 3. add in contributions from hub motion in global coordinates #TODO: nac velocity
     for ibld = 1:size(RootVel,2)
         RootVel[1:3,ibld] = RootVel[1:3,ibld] + hubVel[1:3]
-        RootVel[4:6,ibld] = RootVel[4:6,ibld] + hubVel[4:6]     # rad/s
         RootAcc[1:3,ibld] = RootAcc[1:3,ibld] + hubAcc[1:3]
-        RootAcc[4:6,ibld] = RootAcc[4:6,ibld] + hubAcc[4:6]     # rad/s^2
     end
     return RootVel,RootAcc
 end
@@ -1420,9 +1418,7 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
 
             ### 3. add in contributions from hub motion in global coordinates
             MeshVel[1:3,iNode] = MeshVel[1:3,iNode] + hubVel[1:3]
-            MeshVel[4:6,iNode] = MeshVel[4:6,iNode] + hubVel[4:6]       # rad/s
             MeshAcc[1:3,iNode] = MeshAcc[1:3,iNode] + hubAcc[1:3]
-            MeshAcc[4:6,iNode] = MeshAcc[4:6,iNode] + hubAcc[4:6]       # rad/s
 
             # increment counter for next point
             iNode += 1
