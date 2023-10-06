@@ -295,7 +295,7 @@ function adiInit(output_root_name;
     defPvap     =    1700.0,  # Vapour pressure of working fluid (Pa) [used only for an MHK turbine cavitation check]
     WtrDpth     =       0.0,  # Water depth (m)
     MSL2SWL     =       0.0,  # Offset between still-water level and mean sea level (m) [positive upward]
-    AeroProjMod =         1,  # see note
+    AeroProjMod =         3,  # see note
     storeHHVel  = 0,          # some internal library stuff we probably don't need to expose [0=false, 1=true]
     WrVTK       = 0,          # write VTK files from adi [0 none, 1 ref, 2 motion]
     WrVTK_Type  = 1,          # write VTK files from adi [1 surfaces, 2 lines, 3 both]
@@ -755,6 +755,10 @@ Initializes aerodynamic models and sets up backend persistent memory to simplify
 * `nacPos`: nacelle position in global coordinates, 3-vector (m). NOTE: AD15 assumes a different hub location than OWENS
 * `nacAngle`: nacelle axis angle, 3-vector (deg)
 * `numTurbines`: number of turbines
+* `AeroProjMod::int`:   optional, aero projection mode:
+*                               1.      APM_BEM_NoSweepPitchTwist  "Original AeroDyn model where momentum balance is done in the WithoutSweepPitchTwist system"
+*                               2.      APM_BEM_Polar              "Use staggered polar grid for momentum balance in each annulus"
+*                               3.      APM_LiftingLine            "Use the blade lifting line (i.e. the structural) orientation (currently for OLAF with VAWT)"
 
 
 # Outputs:
@@ -789,6 +793,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     adi_debug   = 0,                              #0 is no debug outputs
     nacPos      = [[0,0,0]],                      # m
     nacAngle      = [[0,0,0]],                      # m
+    AeroProjMod = 3                               # See note:  3 is default for OLAF with VAWT.
     )
 
     # load library and set number of turbines
@@ -910,7 +915,8 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         DT_Outs     = adi_DT_Outs,
         interp_order=1,
         dt=adi_dt,
-        t_max=adi_tmax
+        t_max=adi_tmax,
+        AeroProjMod = AeroProjMod
         )
 
     # can add some additional things here if needed
