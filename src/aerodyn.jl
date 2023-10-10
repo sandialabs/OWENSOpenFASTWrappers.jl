@@ -719,7 +719,8 @@ setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z,B;
     adi_tmax    = 10,
     adi_wrOuts  = 0,
     adi_DT_Outs = 0.0,
-    numTurbines = 1)
+    numTurbines = 1,
+    AeroProjMod = 3)
 
 Initializes aerodynamic models and sets up backend persistent memory to simplify intermittent calling within coupled solver loops
 
@@ -755,10 +756,7 @@ Initializes aerodynamic models and sets up backend persistent memory to simplify
 * `nacPos`: nacelle position in global coordinates, 3-vector (m). NOTE: AD15 assumes a different hub location than OWENS
 * `nacAngle`: nacelle axis angle, 3-vector (deg)
 * `numTurbines`: number of turbines
-* `AeroProjMod::int`:   optional, aero projection mode:
-*                               1.      APM_BEM_NoSweepPitchTwist  "Original AeroDyn model where momentum balance is done in the WithoutSweepPitchTwist system"
-*                               2.      APM_BEM_Polar              "Use staggered polar grid for momentum balance in each annulus"
-*                               3.      APM_LiftingLine            "Use the blade lifting line (i.e. the structural) orientation (currently for OLAF with VAWT)"
+* `AeroProjMod::int`:   optional, aero projection mode: 1.      APM_BEM_NoSweepPitchTwist  "Original AeroDyn model where momentum balance is done in the WithoutSweepPitchTwist system" 2.      APM_BEM_Polar              "Use staggered polar grid for momentum balance in each annulus" 3.      APM_LiftingLine            "Use the blade lifting line (i.e. the structural) orientation (currently for OLAF with VAWT)"
 
 
 # Outputs:
@@ -792,7 +790,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     isVAWT      = true, #TODO: mixed hawts and vawts?
     adi_debug   = 0,                              #0 is no debug outputs
     nacPos      = [[0,0,0]],                      # m
-    nacAngle      = [[0,0,0]],                      # m
+    nacAngle    = [[0,0,0]],                      # m
     AeroProjMod = 3                               # See note:  3 is default for OLAF with VAWT.
     )
 
@@ -862,7 +860,9 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
         # hub
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
-        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb]+[0,-90,0], azi;rot_axis = 1)    
+        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], azi;rot_axis = 1)  
+        CN2P = createGeneralTransformationMatrix([-90,180],[2,3])  
+        CG2H = CG2H*CN2P
         hubOrient    = vec(CG2H')
 
         # Initialize outputs and resulting mesh forces
@@ -1010,7 +1010,9 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
         # CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi[iturb])
         # if turbine[iturb].isVAWT
-        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb]+[0,-90,0], azi[iturb];rot_axis = 1)    
+        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], azi[iturb];rot_axis = 1)  
+        CN2P = createGeneralTransformationMatrix([-90,180],[2,3]) # extra rotation to get the hub into the AeroDyn expected x-z swap and negative y.
+        CG2H = CG2H*CN2P  
         # else   
         #     CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb]+[0.0,90.0,0.0], -azi[iturb]) 
         # end 
@@ -1175,8 +1177,8 @@ Extract the root positions for all ADI blades
 function getRootPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
     RootPos     = zeros(Float32,3,turbine.adi_numbl)
     # conversion from hub coordinates to global
-    CG2H = calcHubRotMat(turbine,hubAngle, -azi)
-    CH2G = CG2H
+    CG2H = calcHubRotMat(turbine,hubAngle, azi)
+    CH2G = CG2H'
     # blades
     for ibld = 1:turbine.B
         idx=turbine.bladeIdx[ibld,1]
