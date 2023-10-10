@@ -261,7 +261,7 @@ OpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,[sh
         nacAngle = [[0.0,0.0,0.0]], #deg
         nacPos      = [[0,0,0.0]],  
         refPos = [[0,0.0,0.0]],
-        isVAWT = false
+        isHAWT = true
         )
 
 # # Time marching
@@ -341,7 +341,7 @@ mymesh.hubAngle = [0.0,-90,0.0]
 #         adi_DT_Outs = dt,    # output frequency
 #         hubAngle = [[0.0,0.0,0.0]], #deg
 #         refPos = [[0,0.0,137.0]],
-#         isVAWT = false
+#         isHAWT = true
 #         )
 
 # Routine for getting aero forces from aD15

@@ -73,6 +73,8 @@ Sets the initial locations of a single rotor (root orientations/positions etc)
 
 # Inputs:
 * `iturb::int`: required, current turbine number
+* `isHAWT::bool`: required, false: VAWT or cross-flow turbine, true: HAWT
+* `intTurbPos::Array(float)`: required, (x,y,z) position of turbine
 * `initHubPos::Array(float)`: required, (x,y,z) position of hub
 * `initHubOrient::Array(float)`: required, orientation of hub as 9 element vector of flattened DCM
 
@@ -89,6 +91,7 @@ Sets the initial locations of a single rotor (root orientations/positions etc)
 
 """
 function adiSetupRotor(iturb;
+    isHAWT             = false,     # Assume VAWT if not specified
     initTurbPos        = zeros(3),  # initial turbine position
     initHubPos         = zeros(3),  # initial position vector of hub
     initHubOrient      = zeros(9),  # initial orientation of hub (flattened 3x3 DCM)
@@ -105,6 +108,7 @@ function adiSetupRotor(iturb;
     try 
         ccall(adi_sym_setuprotor,Cint,
             (Ref{Cint},         # IN: turbine number
+            Ref{Cint},          # IN: isHAWT
             Ref{Cfloat},        # IN: initTurbPos
             Ref{Cfloat},        # IN: initHubPos
             Ref{Cdouble},       # IN: initHubOrient (do we need to flatten this, or just do fortran index order???)
@@ -119,6 +123,7 @@ function adiSetupRotor(iturb;
             Ptr{Cint},          # OUT: error_status
             Cstring),           # OUT: error_message
             iturb,
+            Cint.(isHAWT),
             Cfloat.(initTurbPos), 
             Cfloat.(initHubPos),
             Cdouble.(initHubOrient),
@@ -257,10 +262,6 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 * `defPvap::float`:     optional, vapour pressure of working fluid (default: 1700.0 Pa) [used only for an MHK turbine cavitation check]
 * `WtrDpth::float`:     optional, water depth (default: 0.0 m) [used only for an MHK turbine]
 * `MSL2SWL::float`:     optional, offset between still-water level and mean sea level (default: 0.0 m) [positive upward, used only for an MHK turbine]
-* `AeroProjMod::int`:   optional, aero projection mode:
-*                               1.      APM_BEM_NoSweepPitchTwist  "Original AeroDyn model where momentum balance is done in the WithoutSweepPitchTwist system"
-*                               2.      APM_BEM_Polar              "Use staggered polar grid for momentum balance in each annulus"
-*                               3.      APM_LiftingLine            "Use the blade lifting line (i.e. the structural) orientation (currently for OLAF with VAWT)"
 
 * `storeHHVel::int`:   optional, internal parameter for adi_library.  Exposed for convenience, but not needed. [0=false, 1=true]
 * `WrVTK::int`:         optional, write VTK output files at all timesteps to visualize AeroDyn 15 meshes [0 none (default), 1 ref, 2 motion]
@@ -295,7 +296,6 @@ function adiInit(output_root_name;
     defPvap     =    1700.0,  # Vapour pressure of working fluid (Pa) [used only for an MHK turbine cavitation check]
     WtrDpth     =       0.0,  # Water depth (m)
     MSL2SWL     =       0.0,  # Offset between still-water level and mean sea level (m) [positive upward]
-    AeroProjMod =         3,  # see note
     storeHHVel  = 0,          # some internal library stuff we probably don't need to expose [0=false, 1=true]
     WrVTK       = 0,          # write VTK files from adi [0 none, 1 ref, 2 motion]
     WrVTK_Type  = 1,          # write VTK files from adi [1 surfaces, 2 lines, 3 both]
@@ -367,7 +367,6 @@ function adiInit(output_root_name;
             Ref{Cfloat},        # IN: defPvap
             Ref{Cfloat},        # IN: WtrDpth
             Ref{Cfloat},        # IN: MSL2SWL
-            Ref{Cint},          # IN: AeroProjMod
             Ref{Cint},          # IN: interp_order
             Ref{Cdouble},       # IN: dt
             Ref{Cdouble},       # IN: t_max
@@ -398,7 +397,6 @@ function adiInit(output_root_name;
             defPvap,
             WtrDpth,
             MSL2SWL,
-            AeroProjMod,
             interp_order,
             Cdouble(dt),
             Cdouble(t_max),
@@ -600,7 +598,7 @@ NOTE: struts are modeled as blades in AD15 with their root at the hub radius.  I
 * `bladeElem::TAI2`: an array of start and end indices into the orientation angles stored in myort.Psi_d, myort.Theta_d, and myort.Twist_d.
 * `Mesh::GyricFEA:Mesh`: mesh without deformation. Storing a copy here to clean up the code a bit.
 * `Ort::GyricFEA:Ort`: orientations of all elements without deformation.  Storing here since we don't have a good way of passing this info during simulation
-* `isVAWT::bool`: flag to switch between VAWT and HAWT conventions 
+* `isHAWT::bool`: flag to switch between VAWT and HAWT conventions 
  
 
 # Outputs:
@@ -619,7 +617,7 @@ struct Turbine{TF1,TAF1,TAF2,TI1,TI2,TI3,TAI1,TAI2,TM,TO,TB}
     bladeElem::TAI2
     Mesh::TM
     Ort::TO
-    isVAWT::TB
+    isHAWT::TB
 end
 Turbine(R,omega,refPos,B,adi_numbl,numMeshNodes,bladeIdx,bladeElem,mymesh,myort) = Turbine(R,omega,refPos,B,adi_numbl,numMeshNodes,bladeIdx,bladeElem,mymesh,myort,true)
 
@@ -719,8 +717,7 @@ setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z,B;
     adi_tmax    = 10,
     adi_wrOuts  = 0,
     adi_DT_Outs = 0.0,
-    numTurbines = 1,
-    AeroProjMod = 3)
+    numTurbines = 1)
 
 Initializes aerodynamic models and sets up backend persistent memory to simplify intermittent calling within coupled solver loops
 
@@ -756,7 +753,6 @@ Initializes aerodynamic models and sets up backend persistent memory to simplify
 * `nacPos`: nacelle position in global coordinates, 3-vector (m). NOTE: AD15 assumes a different hub location than OWENS
 * `nacAngle`: nacelle axis angle, 3-vector (deg)
 * `numTurbines`: number of turbines
-* `AeroProjMod::int`:   optional, aero projection mode: 1.      APM_BEM_NoSweepPitchTwist  "Original AeroDyn model where momentum balance is done in the WithoutSweepPitchTwist system" 2.      APM_BEM_Polar              "Use staggered polar grid for momentum balance in each annulus" 3.      APM_LiftingLine            "Use the blade lifting line (i.e. the structural) orientation (currently for OLAF with VAWT)"
 
 
 # Outputs:
@@ -787,11 +783,10 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     hubAngle    = [[0,0,0]],                      # deg
     numTurbines = 1,
     refPos      = [[0,0,0]],                      # turbine location
-    isVAWT      = true, #TODO: mixed hawts and vawts?
+    isHAWT      = false,                          # false: VAWT or cross-flow turbine, true: HAWT
     adi_debug   = 0,                              #0 is no debug outputs
     nacPos      = [[0,0,0]],                      # m
     nacAngle    = [[0,0,0]],                      # m
-    AeroProjMod = 3                               # See note:  3 is default for OLAF with VAWT.
     )
 
     # load library and set number of turbines
@@ -814,7 +809,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         
         numMeshNodes = getAD15numMeshNodes(bladeIdx[iturb])
 
-        turbine[iturb] = Turbine(Radius,omega[iturb],refPos[iturb],B[iturb],adi_numbl,numMeshNodes,bladeIdx[iturb],bladeElem[iturb],mymesh[iturb],myort[iturb],isVAWT)
+        turbine[iturb] = Turbine(Radius,omega[iturb],refPos[iturb],B[iturb],adi_numbl,numMeshNodes,bladeIdx[iturb],bladeElem[iturb],mymesh[iturb],myort[iturb],isHAWT)
 
         # Mesh info for ADI
         # set the origin for AD15 at the top of the "tower" (Ht in this setup)
@@ -869,6 +864,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         try
             adiSetupRotor(iturb;
                 initTurbPos        = refPos[iturb],     #
+                isHAWT             = isHAWT,            # 0: VAWT or cross-flow turbine, 1: HAWT
                 initHubPos         = hubPosTmp,         # 3
                 initHubOrient      = hubOrient,         # 9
                 initNacellePos     = nacPosTmp,            # 3 -- not actually used
@@ -916,7 +912,6 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         interp_order=1,
         dt=adi_dt,
         t_max=adi_tmax,
-        AeroProjMod = AeroProjMod
         )
 
     # can add some additional things here if needed
@@ -1009,12 +1004,12 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
         # hub
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
         # CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi[iturb])
-        # if turbine[iturb].isVAWT
+        # if turbine[iturb].isHAWT
+        #     CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb]+[0.0,90.0,0.0], -azi[iturb]) 
+        # else   
         CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], azi[iturb];rot_axis = 1)  
         CN2P = createGeneralTransformationMatrix([-90,180],[2,3]) # extra rotation to get the hub into the AeroDyn expected x-z swap and negative y.
         CG2H = CG2H*CN2P  
-        # else   
-        #     CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb]+[0.0,90.0,0.0], -azi[iturb]) 
         # end 
         turbstruct[iturb].hubPos       = hubPos[iturb]
         turbstruct[iturb].hubOrient    = vec(CG2H') # this should have the rotation about x, so for a vawt, x is up.
@@ -1233,10 +1228,10 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     RootAcc     = zeros(Float32,6,turbine.adi_numbl)
     ### 1. calculate relative velocity from mesh distortions
     # conversion from hub coordinates to global
-    # if turbine.isVAWT
-    CG2H = calcHubRotMat(turbine,hubAngle, azi)
-    # else
+    # if turbine.isHAWT
     #     CG2H = calcHubRotMat(turbine,hubAngle, -azi)
+    # else
+    CG2H = calcHubRotMat(turbine,hubAngle, azi)
     # end
     CH2G = CG2H
     # blades #TODO: check the uddot, may be all 0s and shouldn't be, will be an issue for MHK turbines added mass
@@ -1271,7 +1266,7 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     ### 2. Tangential velocity due to hub rotation
     # calculate distance of point from hub axis, multiply by Omega_rad for tangential velocity component
     # hub axis vector in global coordinates
-    # if turbine.isVAWT
+    # if turbine.isHAWT
     hubAxis = CG2H[:,3]
     # else
     #     hubAxis = CG2H[:,1]
@@ -1381,18 +1376,18 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
     MeshVel     = zeros(Float32,6,turbine.numMeshNodes)
     MeshAcc     = zeros(Float32,6,turbine.numMeshNodes)
     # conversion from hub coordinates to global
-    # if turbine.isVAWT
-    CG2H = calcHubRotMat(turbine,hubAngle, azi)
-    # else
+    # if turbine.isHAWT
     #     CG2H = calcHubRotMat(turbine,hubAngle, -azi)
+    # else
+    CG2H = calcHubRotMat(turbine,hubAngle, azi)
     # end
     CH2G = CG2H 
 
     # hub axis vector in global coordinates
-    # if turbine.isVAWT
-    hubAxis = CG2H[:,3]
-    # else
+    # if turbine.isHAWT
     #     hubAxis = CG2H[:,1]
+    # else
+    hubAxis = CG2H[:,3]
     # end
     # blades, bottom struts, top struts
     iNode = 1
@@ -1468,26 +1463,26 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
         #     sin(angle) cos(angle)]
 
         # XY = [shapeX;; shapeY]*Rz'
-        if turbine.isVAWT
-            angle_axes = [2,1,2,3]
-            ang1 = [-90,Twist,Theta,Psi]
-            ang2 = [90,Twist,Theta,Psi]
-        else
+        if turbine.isHAWT
             angle_axes = [3,2,1]
             ang1 = [Psi,90.0,Twist*0]
             ang2 = [Twist,Theta,Psi]
+        else
+            angle_axes = [2,1,2,3]
+            ang1 = [-90,Twist,Theta,Psi]
+            ang2 = [90,Twist,Theta,Psi]
         end
 
         if i<=turbine.B
             #FIME: the following is for a CCW spinning rotor.  some things need changing for a CW spinning rotor.
             # flip +z towards X, then apply Twist (Roll, Rx) -> Theta (Pitch, Ry) -> Psi (Yaw, Rz) 
             #TODO: connection deformations
-            if turbine.isVAWT
-                ang1[3] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
-                ang1[2] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
-            else
+            if turbine.isHAWT
                 # ang1[3] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
                 # ang1[2] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
+            else
+                ang1[3] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
+                ang1[2] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
             end
             DCM = createGeneralTransformationMatrix(ang1,angle_axes) * CH2G
         else
@@ -1539,13 +1534,13 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
             Theta   = turbine.Ort.Theta_d[idx]  - rad2deg(u_j[(idx-1)*6+5])
             Twist   = turbine.Ort.Twist_d[idx]  - rad2deg(u_j[(idx-1)*6+6])
 
-            # if turbine.isVAWT
-            angle_axes = [1,2,3]
-            ang = [Twist,Theta,Psi]
-            # else
+            # if turbine.isHAWT
             #     angle_axes = [2,3,2,1]
             #     ang1 = [-90, Psi, Theta, Twist]
             #     ang2 = [ 90, Psi, Theta, Twist]
+            # else
+            angle_axes = [1,2,3]
+            ang = [Twist,Theta,Psi]
             # end
 
             DCM = createGeneralTransformationMatrix(ang,angle_axes) * CH2G
@@ -1694,10 +1689,10 @@ function frame_convert(init_frame_vals, trans_mat)
 end
 
 function calcHubRotMat(turbine,ptfmRot, azi_j;rot_axis = 3)
-    # if turbine.isVAWT
-        # rot_axis = 3
-    # else
+    # if turbine.isHAWT
     #     rot_axis = 1
+    # else
+        # rot_axis = 3
     # end
     # CN2P = transMat(ptfmRot[1], ptfmRot[2], ptfmRot[3])
     CP2H = createGeneralTransformationMatrix([azi_j*180/pi],[rot_axis])
