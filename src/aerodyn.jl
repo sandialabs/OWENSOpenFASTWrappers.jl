@@ -717,6 +717,7 @@ setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z,B;
     adi_tmax    = 10,
     adi_wrOuts  = 0,
     adi_DT_Outs = 0.0,
+    isHAWT      = false,                          # false: VAWT or cross-flow turbine, true: HAWT
     numTurbines = 1)
 
 Initializes aerodynamic models and sets up backend persistent memory to simplify intermittent calling within coupled solver loops
@@ -749,10 +750,11 @@ Initializes aerodynamic models and sets up backend persistent memory to simplify
 * `adi_dt`: timestep
 * `adi_tmax`: maximum time
 * `hubPos`: hub position in global coordinates, 3-vector (m). NOTE: AD15 assumes a different hub location than OWENS
-* `hubAngle`: hub axis angle, 3-vector (deg)
+* `hubAngle`: hub axis angle, 3-vector (deg), no rotation from spinning
 * `nacPos`: nacelle position in global coordinates, 3-vector (m). NOTE: AD15 assumes a different hub location than OWENS
 * `nacAngle`: nacelle axis angle, 3-vector (deg)
 * `numTurbines`: number of turbines
+* `isHAWT`: # false: VAWT or cross-flow turbine, true: HAWT
 
 
 # Outputs:
@@ -780,7 +782,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     adi_tmax    = 10,                           # end time
     omega       = [0],                          # rad/s
     hubPos      = [[0,0,0]],                      # m
-    hubAngle    = [[0,0,0]],                      # deg
+    hubAngle    = [[0,0,0]],                      # deg , no rotation from spinning
     numTurbines = 1,
     refPos      = [[0,0,0]],                      # turbine location
     isHAWT      = false,                          # false: VAWT or cross-flow turbine, true: HAWT
@@ -804,12 +806,17 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     for iturb = 1:numTurbines
 
         # Set up structs for the entire turbine
-        adi_numbl = B[iturb] + B[iturb]*adi_nstrut[iturb]    # Count struts as blades (strut each side of tower counted separately)
+        if isHAWT
+            adi_numbl = B[iturb]
+        else #TODO N struts
+            adi_numbl = B[iturb] + B[iturb]*adi_nstrut[iturb]    # Count struts as blades (strut each side of tower counted separately)
+        end
         Radius = maximum(bld_x[iturb])
         
         numMeshNodes = getAD15numMeshNodes(bladeIdx[iturb])
 
-        turbine[iturb] = Turbine(Radius,omega[iturb],refPos[iturb],B[iturb],adi_numbl,numMeshNodes,bladeIdx[iturb],bladeElem[iturb],mymesh[iturb],myort[iturb],isHAWT)
+        turbine[iturb] = Turbine(Radius,omega[iturb],refPos[iturb],B[iturb],adi_numbl,
+            numMeshNodes,bladeIdx[iturb],bladeElem[iturb],mymesh[iturb],myort[iturb],isHAWT)
 
         # Mesh info for ADI
         # set the origin for AD15 at the top of the "tower" (Ht in this setup)
@@ -855,9 +862,13 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
         # hub
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
-        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], azi;rot_axis = 1)  
-        CN2P = createGeneralTransformationMatrix([-90,180],[2,3])  
-        CG2H = CG2H*CN2P
+        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], azi;rot_axis = 1) 
+   
+        if !turbine[iturb].isHAWT
+            CN2P = createGeneralTransformationMatrix([-90,180],[2,3])  
+            CG2H = CG2H*CN2P
+        end
+        
         hubOrient    = vec(CG2H')
 
         # Initialize outputs and resulting mesh forces
@@ -978,7 +989,7 @@ Sets the inputs for AD15.
 * `Omega_rad`:      angular velocity of hub about hub axis (rad/s)
 * `OmegaDot_rad`:   angular acceleration of hub about hub axis (rad/s^2)
 * `hubPos`:         current global hubPos (x,y,z) vector (m)
-* `hubAngle`:       3 angle set for hub orientation (rad)
+* `hubAngle`:       3 angle set for hub orientation (rad), no rotation from spinning
 * `hubVel`:         hub velocity in global coords, 6-vector (m/s,rad/s)
 * `hubAcc`:         hub acceleration in global coords, 6-vector (m/s^2,rad/s^2)
 """
@@ -1003,13 +1014,11 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
 
         # hub
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
-        # CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], -azi[iturb])
-        # if turbine[iturb].isHAWT
-        #     CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb]+[0.0,90.0,0.0], -azi[iturb]) 
-        # else   
         CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], azi[iturb];rot_axis = 1)  
-        CN2P = createGeneralTransformationMatrix([-90,180],[2,3]) # extra rotation to get the hub into the AeroDyn expected x-z swap and negative y.
-        CG2H = CG2H*CN2P  
+        if !turbine[iturb].isHAWT #orient hub to expected rotatation about x, so align x with global z axis
+            CN2P = createGeneralTransformationMatrix([-90,180],[2,3])  
+            CG2H = CG2H*CN2P
+        end
         # end 
         turbstruct[iturb].hubPos       = hubPos[iturb]
         turbstruct[iturb].hubOrient    = vec(CG2H') # this should have the rotation about x, so for a vawt, x is up.
@@ -1167,41 +1176,21 @@ Extract the root positions for all ADI blades
 * `azi`:        current azimuth (rad)
 * `nacPos`:     current global nacPos (x,y,z) vector (m)
 * `hubPos`:     current global hubPos (x,y,z) vector (m)
-* `hubAngle`:   3 angle set for hub orientation (rad)
+* `hubAngle`:   3 angle set for hub orientation (rad), no rotation from spinning
 """
 function getRootPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
     RootPos     = zeros(Float32,3,turbine.adi_numbl)
     # conversion from hub coordinates to global
     CG2H = calcHubRotMat(turbine,hubAngle, azi)
-    CH2G = CG2H'
+    CH2G = CG2H
     # blades
-    for ibld = 1:turbine.B
+    for ibld = 1:turbine.adi_numbl
         idx=turbine.bladeIdx[ibld,1]
         x=turbine.Mesh.x[idx] + u_j[(idx-1)*6+1]
         y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
         z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
         #println("Blade $ibld bottom at [$x,$y,$z] at index $idx")
         RootPos[:,ibld] = [x y z] * CH2G + nacPos' #+ hubPos'
-    end
-    if turbine.adi_numbl>turbine.B #i.e. if we have struts TODO: N-struts
-        # bottom strut
-        for ibld = turbine.B+1:2*turbine.B
-            idx=turbine.bladeIdx[ibld,1]
-            x=turbine.Mesh.x[idx] + u_j[(idx-1)*6+1]
-            y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
-            z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
-            #println("Blade strut $ibld bottom at [$x,$y,$z] at index $idx")
-            RootPos[:,ibld] = [x y z] * CH2G + nacPos' #+ hubPos'
-        end
-        # top strut
-        for ibld = 2*turbine.B+1:3*turbine.B
-            idx=turbine.bladeIdx[ibld,1]
-            x=turbine.Mesh.x[idx] + u_j[(idx-1)*6+1]
-            y=turbine.Mesh.y[idx] + u_j[(idx-1)*6+2]
-            z=turbine.Mesh.z[idx] + u_j[(idx-1)*6+3]
-            #println("Blade strut $ibld top at [$x,$y,$z] at index $idx")
-            RootPos[:,ibld] = [x y z] * CH2G + nacPos' #+ hubPos'
-        end
     end
     return RootPos
 end
@@ -1219,7 +1208,7 @@ Extract the root velocities and accelerations for all ADI blades
 * `OmegaDot_rad`:   angular acceleration of hub about hub axis (rad/s^2)
 * `nacPos`:         current global nacPos (x,y,z) vector (m)
 * `hubPos`:         current global hubPos (x,y,z) vector (m)
-* `hubAngle`:       3 angle set for hub orientation (rad)
+* `hubAngle`:       3 angle set for hub orientation (rad) , no rotation from spinning
 * `hubVel`:         hub velocity in global coords, 6-vector (m/s,rad/s)
 * `hubAcc`:         hub acceleration in global coords, 6-vector (m/s^2,rad/s^2)
 """
@@ -1235,7 +1224,7 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     # end
     CH2G = CG2H
     # blades #TODO: check the uddot, may be all 0s and shouldn't be, will be an issue for MHK turbines added mass
-    for ibld = 1:turbine.B
+    for ibld = 1:turbine.adi_numbl
         tmp=turbine.bladeIdx[ibld,1]
         idx=(tmp-1)*6   # just before the node of interest
         RootVel[1:3,ibld] =  udot_j[idx+1:idx+3]' * CH2G         # translation Vel (m/2)
@@ -1243,26 +1232,7 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
         RootAcc[1:3,ibld] = uddot_j[idx+1:idx+3]' * CH2G         # translation Acc (m/s^2)
         RootAcc[4:6,ibld] = uddot_j[idx+4:idx+6]' * CH2G         # rotation    Acc (rad/s^2)
     end
-    if turbine.adi_numbl>turbine.B # if we have struts, TODO: N-struts
-        # bottom strut
-        for ibld = turbine.B+1:2*turbine.B
-            tmp=turbine.bladeIdx[ibld,1]
-            idx=(tmp-1)*6   # just before the node of interest
-            RootVel[1:3,ibld] =  udot_j[idx+1:idx+3]' * CH2G         # translation Vel (m/2)
-            RootVel[4:6,ibld] =  udot_j[idx+4:idx+6]' * CH2G         # rotation    Vel (rad/s)
-            RootAcc[1:3,ibld] = uddot_j[idx+1:idx+3]' * CH2G         # translation Acc (m/s^2)
-            RootAcc[4:6,ibld] = uddot_j[idx+4:idx+6]' * CH2G         # rotation    Acc (rad/s^2)
-        end
-        # top strut
-        for ibld = 2*turbine.B+1:3*turbine.B
-            tmp=turbine.bladeIdx[ibld,1]
-            idx=(tmp-1)*6   # just before the node of interest
-            RootVel[1:3,ibld] =  udot_j[idx+1:idx+3]' * CH2G         # translation Vel (m/2)
-            RootVel[4:6,ibld] =  udot_j[idx+4:idx+6]' * CH2G         # rotation    Vel (rad/s)
-            RootAcc[1:3,ibld] = uddot_j[idx+1:idx+3]' * CH2G         # translation Acc (m/s^2)
-            RootAcc[4:6,ibld] = uddot_j[idx+4:idx+6]' * CH2G         # rotation    Acc (rad/s^2)
-        end
-    end
+  
     ### 2. Tangential velocity due to hub rotation
     # calculate distance of point from hub axis, multiply by Omega_rad for tangential velocity component
     # hub axis vector in global coordinates
@@ -1322,7 +1292,7 @@ Extract the mesh points for all the AD15 blades
 * `azi`:        current azimuth (rad)
 * `hubPos`:     current global hubPos (x,y,z) vector (m)
 * `nacPos`:     current global nacPos (x,y,z) vector (m)
-* `hubAngle`:   3 angle set for hub orientation (rad)
+* `hubAngle`:   3 angle set for hub orientation (rad) , no rotation from spinning
 """
 function getAD15MeshPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
     #display(turbine.bladeIdx)
@@ -1367,7 +1337,7 @@ Extract the mesh velocities and accelerations for all the AD15 blades
 * `OmegaDot_rad`:   angular acceleration of hub about hub axis (rad/s^2)
 * `hubPos`:         current global hubPos (x,y,z) vector (m)
 * `nacPos`:         current global nacPos (x,y,z) vector (m)
-* `hubAngle`:       3 angle set for hub orientation (rad)
+* `hubAngle`:       3 angle set for hub orientation (rad), no rotation from spinning
 * `hubVel`:         hub velocity in global coords (m/s,rad/s)
 * `hubAcc`:         hub acceleration in global coords (m/s^2,rad/s^2)
 """
@@ -1443,7 +1413,7 @@ Note on angles
 * `turbine`:    turbine data storage
 * `u_j`:        mesh displacements -- in hub coordinates, (m,rad)
 * `azi`:        current azimuth (rad)
-* `hubAngle`:   3 angle set for hub orientation (rad)
+* `hubAngle`:   3 angle set for hub orientation (rad), no rotation from spinning
 
 #FIXME: add averaging of orientations to get nodes within blade/strut
 """
@@ -1458,36 +1428,30 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
         Psi     = turbine.Ort.Psi_d[idx]    #- rad2deg(u_j[(idx-1)*6+4]) # we should not include deformation of the angles since those are in the mesh, this is just aligning the overall blade angles, there is deformation in the overall position so the blades follow the deformation of the tower.
         Theta   = turbine.Ort.Theta_d[idx]  #- rad2deg(u_j[(idx-1)*6+5])
         Twist   = turbine.Ort.Twist_d[idx]  #- rad2deg(u_j[(idx-1)*6+6])
-        # angle = atan.(diff(shapeX),diff(shapeY))[1]
-        # Rz = [cos(angle) -sin(angle)
-        #     sin(angle) cos(angle)]
 
-        # XY = [shapeX;; shapeY]*Rz'
         if turbine.isHAWT
-            angle_axes = [3,2,1]
-            ang1 = [Psi,90.0,Twist*0]
-            ang2 = [Twist,Theta,Psi]
+            angle_axes = [2,1,2,3,2]
+            ang1 = [-180,Twist,-90.0,Psi,-90]
+            # ang2 = [0,Twist,Theta,Psi,-90] Shouldn't be used for normal hawt..
         else
             angle_axes = [2,1,2,3]
-            ang1 = [-90,Twist,Theta,Psi]
+            ang1 = [-90,0.0,-90.0,Psi]
             ang2 = [90,Twist,Theta,Psi]
         end
 
         if i<=turbine.B
             #FIME: the following is for a CCW spinning rotor.  some things need changing for a CW spinning rotor.
             # flip +z towards X, then apply Twist (Roll, Rx) -> Theta (Pitch, Ry) -> Psi (Yaw, Rz) 
-            #TODO: connection deformations
-            if turbine.isHAWT
-                # ang1[3] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
-                # ang1[2] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
-            else
-                ang1[3] = -90.0#-rad2deg(u_j[(idx-1)*6+5])
-                ang1[2] = 0.0#-rad2deg(u_j[(idx-1)*6+5])
-            end
+            #TODO: connection deformations from u_j
             DCM = createGeneralTransformationMatrix(ang1,angle_axes) * CH2G
         else
             DCM = createGeneralTransformationMatrix(ang2,angle_axes)' * CH2G
         end
+
+        # if turbine.isHAWT
+        #     DCM = DCM * createGeneralTransformationMatrix([90.0],[2])
+        # end
+
         RootOrient[:,i] = vec(DCM)
     end
     return RootOrient
@@ -1508,7 +1472,7 @@ Extract the mesh points orientations for all the AD15 blades
 * `turbine`:    turbine data storage
 * `u_j`:        mesh displacements -- in hub coordinates, (m,rad)
 * `azi`:        current azimuth (rad)
-* `hubAngle`:   3 angle set for hub orientation (rad)
+* `hubAngle`:   3 angle set for hub orientation (rad), no rotation from spinning
 
 #FIXME: add averaging of orientations to get nodes within blade/strut
 """
@@ -1689,11 +1653,6 @@ function frame_convert(init_frame_vals, trans_mat)
 end
 
 function calcHubRotMat(turbine,ptfmRot, azi_j;rot_axis = 3)
-    # if turbine.isHAWT
-    #     rot_axis = 1
-    # else
-        # rot_axis = 3
-    # end
     # CN2P = transMat(ptfmRot[1], ptfmRot[2], ptfmRot[3])
     CP2H = createGeneralTransformationMatrix([azi_j*180/pi],[rot_axis])
     CN2P = createGeneralTransformationMatrix(ptfmRot,[1,2,3])
@@ -1808,12 +1767,12 @@ True                    SumPrint    - Generate a summary file listing input opti
 \"RtAeroMyh\"
 \"RtAeroMzh\"
 \"RtAeroPwr\"
-\"RtAeroFxg\"
-\"RtAeroFyg\"
-\"RtAeroFzg\"
-\"RtAeroMxg\"
-\"RtAeroMyg\"
-\"RtAeroMzg\"
+\"RtAeroFxi\"
+\"RtAeroFyi\"
+\"RtAeroFzi\"
+\"RtAeroMxi\"
+\"RtAeroMyi\"
+\"RtAeroMzi\"
 \"RtArea\"
 \"RtSkew\"
 \"RtSpeed\"
@@ -1834,12 +1793,12 @@ True                    SumPrint    - Generate a summary file listing input opti
 \"B1AeroMy\"
 \"B1AeroMz\"
 \"B1AeroPwr\"
-\"B1AeroFxg\"
-\"B1AeroFyg\"
-\"B1AeroFzg\"
-\"B1AeroMxg\"
-\"B1AeroMyg\"
-\"B1AeroMzg\"
+\"B1AeroFxi\"
+\"B1AeroFyi\"
+\"B1AeroFzi\"
+\"B1AeroMxi\"
+\"B1AeroMyi\"
+\"B1AeroMzi\"
 \"B2AeroFx\"
 \"B2AeroFy\"
 \"B2AeroFz\"
@@ -1847,12 +1806,12 @@ True                    SumPrint    - Generate a summary file listing input opti
 \"B2AeroMy\"
 \"B2AeroMz\"
 \"B2AeroPwr\"
-\"B2AeroFxg\"
-\"B2AeroFyg\"
-\"B2AeroFzg\"
-\"B2AeroMxg\"
-\"B2AeroMyg\"
-\"B2AeroMzg\"
+\"B2AeroFxi\"
+\"B2AeroFyi\"
+\"B2AeroFzi\"
+\"B2AeroMxi\"
+\"B2AeroMyi\"
+\"B2AeroMzi\"
 \"B3AeroFx\"
 \"B3AeroFy\"
 \"B3AeroFz\"
@@ -1860,12 +1819,12 @@ True                    SumPrint    - Generate a summary file listing input opti
 \"B3AeroMy\"
 \"B3AeroMz\"
 \"B3AeroPwr\"
-\"B3AeroFxg\"
-\"B3AeroFyg\"
-\"B3AeroFzg\"
-\"B3AeroMxg\"
-\"B3AeroMyg\"
-\"B3AeroMzg\"
+\"B3AeroFxi\"
+\"B3AeroFyi\"
+\"B3AeroFzi\"
+\"B3AeroMxi\"
+\"B3AeroMyi\"
+\"B3AeroMzi\"
 \"B4AeroFx\"
 \"B4AeroFy\"
 \"B4AeroFz\"
@@ -1873,12 +1832,12 @@ True                    SumPrint    - Generate a summary file listing input opti
 \"B4AeroMy\"
 \"B4AeroMz\"
 \"B4AeroPwr\"
-\"B4AeroFxg\"
-\"B4AeroFyg\"
-\"B4AeroFzg\"
-\"B4AeroMxg\"
-\"B4AeroMyg\"
-\"B4AeroMzg\"
+\"B4AeroFxi\"
+\"B4AeroFyi\"
+\"B4AeroFzi\"
+\"B4AeroMxi\"
+\"B4AeroMyi\"
+\"B4AeroMzi\"
 END of input file (the word \"END\" must appear in the first 3 columns of this last OutList line)
 ====== Outputs for all blade stations (same ending as above for B1N1.... =========================== [optional section]
 9              BldNd_BladesOut     - Number of blades to output all node information at.  Up to number of blades on turbine. (-)

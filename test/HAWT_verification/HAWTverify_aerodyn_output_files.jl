@@ -1,8 +1,6 @@
 # Example usage the Julia wrapper for the AeroDyn DLL
 
 import FLOWMath
-import GyricFEA
-import OWENS
 import VAWTAero
 import OWENS
 
@@ -31,14 +29,13 @@ plot_cycle=["#348ABD", "#A60628", "#009E73", "#7A68A6", "#D55E00", "#CC79A7"]
 include("$path/../../src/OpenFASTWrappers.jl")
 
 # # Run the standalone aerodyn
-# run(`$path/../../../openfastandy/build/modules/aerodyn/aerodyn_driver $path/HAWT_standalone_test.dvr`)
+# run(`$path/../../../openfast/build/modules/aerodyn/aerodyn_driver $path/HAWT_standalone_test.dvr`)
 
-adi_lib = "$path/../../../openfastandy/build/modules/aerodyn/libaerodyn_inflow_c_binding" #change this to match your local path of the AeroDyn DLL
+adi_lib = "$path/../../../openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding" #change this to match your local path of the AeroDyn DLL
 # adi_lib = "/builds/8921-VAWT-TOOLS/OpenFASTWrappers.jl/openfast/build/modules/AeroDyn/libAeroDyn_c_binding" #change this to match your local path of the AeroDyn DLL
 
 # output files from ADI
-adi_rootname = "$path/HAWT_OWENS_AD15"
-adi_rootname_twoway = "$path/HAWT_OWENS_AD15_stiff_one_way"
+adi_rootname_direct = "$path/HAWT_OWENS_AD15"
 
 num_corrections = 0
 
@@ -89,7 +86,7 @@ mymesh,myel,myort,myjoint,sectionPropsArray,mass_twr, mass_bld,
     NuMad_geom_xlscsv_file_bld = nothing,
     NuMad_mat_xlscsv_file_bld = nothing,
     stack_layers_bld = nothing,
-    Ht=0.0,
+    Ht,
     ntelem = 10, #tower elements
     nbelem = 19, #blade elements
     ncelem = 10,
@@ -248,7 +245,7 @@ ifw_input_file="$path/ifw_primary.dat"
 # OpenFASTWrappers.writeIWfile(10.0,ifw_input_file;turbsim_filename=nothing)
 
 # Run AeroDyn
-OpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,[shapeX],[shapeY],[B],[Ht],[mymesh],[myort],[bladeIdx],[bladeElem];
+OpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname_direct,[shapeX],[shapeY],[B],[Ht],[mymesh],[myort],[bladeIdx],[bladeElem];
         rho     = rho,
         adi_dt  = dt,
         adi_nstrut  = 0,
@@ -264,224 +261,170 @@ OpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,[sh
         isHAWT = true
         )
 
-# # Time marching
-# ForceValHist = zeros(Int(mymesh.numNodes*6),length(ts[1:end-1]))
-# AziHist = zeros(length(ts[1:end-1]))
-# Fzhist = zeros(mymesh.numNodes,length(ts[1:end-1]))
+# Time marching
+ForceValHist = zeros(length(ts[1:end-1]),Int(mymesh.numNodes*6))
+AziHist = zeros(length(ts[1:end-1]))
+Fxhist = zeros(mymesh.numNodes,length(ts[1:end-1]))
+Fyhist = zeros(mymesh.numNodes,length(ts[1:end-1]))
+Fzhist = zeros(mymesh.numNodes,length(ts[1:end-1]))
+Mxhist = zeros(mymesh.numNodes,length(ts[1:end-1]))
+Myhist = zeros(mymesh.numNodes,length(ts[1:end-1]))
+Mzhist = zeros(mymesh.numNodes,length(ts[1:end-1]))
 
-# for (tidx, t) in enumerate(ts[1:end-1])
-#     # println("time $t")
-#     for correction = 1:num_corrections+1
-#         # println("correction $correction")
+for (tidx, t) in enumerate(ts[1:end-1])
+    # println("time $t")
+    for correction = 1:num_corrections+1
+        # println("correction $correction")
 
-#         #mapAD15(t,azi_j,mesh,advanceAD15)
-#         azi_j = omega*(t+dt) # rad/s * s
-#         AziHist[tidx] = azi_j
-#         u_j     = zeros(mymesh.numNodes*6)
-#         udot_j  = zeros(mymesh.numNodes*6)
-#         uddot_j = zeros(mymesh.numNodes*6)
-#         hubPos      = [0,0,Ht]                      # m
-#         hubAngle    = [0,90,0.0]                       # rad
-#         hubVel = zeros(6)
-#         hubAcc = zeros(6)
-#         OpenFASTWrappers.deformAD15([u_j],[udot_j],[uddot_j],[azi_j],[omega],[zero(omega)],[hubPos],[hubAngle],[hubVel],[hubAcc])
-#         n_steps,Fx,Fy,Fz,Mx,My,Mz = OpenFASTWrappers.advanceAD15(t,[mymesh],azi_j)
-#         Fzhist[:,tidx] = Fz[1][:,1]
-#         # NOTE on AD15 advanceTurb values (Fx,Fy,Fz,Mx,My,Mz)
-#         #       - forces/moments are in hub coordinates (converted in advanceAD15)
-#         #       - array length is the number of OWENS mesh points
-#         #       - This includes the struts (and could include tower when we add that to the AD15 interface)
-    
-#         #     [~,~,timeLen] = size(aeroDistLoadsArrayTime)
-        
-    
-#         # Map loads over from advanceTurb
-#         for i=1:mymesh.numNodes
-#             ForceValHist[(i-1)*6+1,tidx] = Fz[1][i,1]
-#             ForceValHist[(i-1)*6+2,tidx] = Fy[1][i,1]
-#             ForceValHist[(i-1)*6+3,tidx] = -Fx[1][i,1]
-#             ForceValHist[(i-1)*6+4,tidx] = Mz[1][i,1]
-#             ForceValHist[(i-1)*6+5,tidx] = My[1][i,1]
-#             ForceValHist[(i-1)*6+6,tidx] = -Mx[1][i,1]
-#         end
-#         # DOFs are sequential through all nodes
-#         ForceDof=collect(1:1:mymesh.numNodes*6)
-#     end
+        #mapAD15(t,azi_j,mesh,advanceAD15)
+        azi_j = omega*(t+dt) # rad/s * s
+        AziHist[tidx] = azi_j
+        u_j     = zeros(mymesh.numNodes*6)
+        udot_j  = zeros(mymesh.numNodes*6)
+        uddot_j = zeros(mymesh.numNodes*6)
+        hubPos      = [0,0,Ht]                      # m
+        hubAngle    = [0,0,0]                       # rad
+        rotvel = omega
+        hubVel = [0,0,0,0,0,rotvel]#zeros(6)
+        hubAcc = zeros(6) #TODO: may eventually need this for MHK?
 
-# end
-# println("End Aerodynamics")
-# OpenFASTWrappers.endTurb()
+        OpenFASTWrappers.deformAD15([u_j],
+        [udot_j],
+        [uddot_j],
+        [azi_j],
+        [omega],
+        [zero(omega)],
+        [hubPos],
+        [hubAngle],
+        [hubVel],
+        [hubAcc])
 
+        n_steps,Fx,Fy,Fz,Mx,My,Mz = OpenFASTWrappers.advanceAD15(t,[mymesh],[azi_j])
+        Fxhist[:,tidx] = Fx[1][:,1]
+        Fyhist[:,tidx] = Fy[1][:,1]
+        Fzhist[:,tidx] = Fz[1][:,1]
+        Mxhist[:,tidx] = Mx[1][:,1]
+        Myhist[:,tidx] = My[1][:,1]
+        Mzhist[:,tidx] = Mz[1][:,1]
 
-#########################################
-### Run STIFF one way coupling
-#########################################
+        # Map loads over from advanceTurb
+        for i=1:mymesh.numNodes
+            ForceValHist[tidx,(i-1)*6+1] = Fx[1][i,1]
+            ForceValHist[tidx,(i-1)*6+2] = Fy[1][i,1]
+            ForceValHist[tidx,(i-1)*6+3] = Fz[1][i,1]
+            ForceValHist[tidx,(i-1)*6+4] = Mx[1][i,1]
+            ForceValHist[tidx,(i-1)*6+5] = My[1][i,1]
+            ForceValHist[tidx,(i-1)*6+6] = Mz[1][i,1]
+        end
+        # DOFs are sequential through all nodes
+        ForceDof=collect(1:1:mymesh.numNodes*6)
+    end
 
-dt = 0.01
-t_initial = t_initial = 0.0
-t_max = 0.5
-ts = collect(t_initial:dt:t_max)
-numTS = length(ts)
-
-mymesh.hubPos =  [0,0.0,137.0]#TODO: make this streamlined in the code initialization, consider putting it elsewhere.
-mymesh.hubAngle = [0.0,-90,0.0]
-
-#########################################
-### Create Aero Functions
-#########################################
-
-# #FIXME: this is a placeholder call returning no loads
-# OpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname_twoway,[shapeX],[shapeY],[B],[Ht],[mymesh],[myort],[bladeIdx],[bladeElem];
-#         rho     = rho,
-#         adi_dt  = dt,
-#         adi_nstrut  = 0,
-#         adi_tmax= t_max,
-#         omega   = [omega],
-#         adi_wrOuts = 1,     # write output file [0 none, 1 txt, 2 binary, 3 both]
-#         adi_DT_Outs = dt,    # output frequency
-#         hubAngle = [[0.0,0.0,0.0]], #deg
-#         refPos = [[0,0.0,137.0]],
-#         isHAWT = true
-#         )
-
-# Routine for getting aero forces from aD15
-
-aeroForcesAD15(t,azi) = OWENS.mapAD15(t,azi,[mymesh],OpenFASTWrappers.advanceAD15;alwaysrecalc=true,verbosity=1)
-
-
-######################################
-#### Perform Stiff One Way Test
-#######################################
-
-pBC = [1 1 0
-1 2 0
-1 3 0
-1 4 0
-1 5 0
-1 6 0]
-
-model = OWENS.Inputs(;analysisType = "GX",
-    tocp = [0.0,100000.1],
-    Omegaocp = [RPM,RPM] ./ 60,
-    turbineStartup = 0,
-    generatorOn = false,
-    useGeneratorFunction = false,
-    numTS = numTS,
-    delta_t = dt,
-    aeroLoadsOn = 2.0,        # 1: one way; 1.5: aero once in iteration in 2 way; 2: two-way
-    AD15On = true,
-    topsideOn = true,
-    interpOrder = 2)
-model.iteration_parameters.MAXITER=20   # temporary for testing
-
-feamodel = GyricFEA.FEAModel(;analysisType = "GX",
-    outFilename = "none",
-    joint = myjoint,
-    platformTurbineConnectionNodeNumber = 1,
-    pBC,
-    nlOn = false,
-    gravityOn = false, # turn off since aero only doesn't include gravity, also turned off rotational effects in setupxxx.jl
-    numNodes = mymesh.numNodes,
-    RayleighAlpha = 0.05,
-    RayleighBeta = 0.05,
-    return_all_reaction_forces = true,
-    iterationType = "DI")
-
-println("Running Unsteady")
-t, aziHist,OmegaHist,OmegaDotHist,gbHist,gbDotHist,gbDotDotHist,
-FReactionHist_stiff_one_way,FTwrBsHist,genTorque,genPower,torqueDriveShaft,uHist,
-uHist_prp,epsilon_x_hist,epsilon_y_hist,epsilon_z_hist,kappa_x_hist,
-kappa_y_hist,kappa_z_hist,FPtfmHist,FHydroHist,FMooringHist,
-topFexternal_hist,rbDataHist = OWENS.Unsteady_Land(model;topModel=feamodel,topMesh=mymesh,topEl=myel,aero=aeroForcesAD15,
-    deformAero=OpenFASTWrappers.deformAD15,system=system,assembly=assembly) #,meshcontrolfunction=mymeshcontrolfunction2,userDefinedGenerator=userDefinedGenerator,
-
-
-
+end
 println("End Aerodynamics")
 OpenFASTWrappers.endTurb()
-####################################################################################################################################################################################################################################
+
+######################################
+#### Plot Comparison
+#######################################
+
+# Load Standalone Data
+standalone_AD = DelimitedFiles.readdlm("$path/HAWT_standalone_test.out",skipstart=8)
+header_standalone = DelimitedFiles.readdlm("$path/HAWT_standalone_test.out",header=true,skipstart=6)[2]
+
+# Compare with Current Data on the AeroDyn Side
+library_ADside_direct = DelimitedFiles.readdlm("$adi_rootname_direct.out",skipstart=8)
+header_library_direct = DelimitedFiles.readdlm("$adi_rootname_direct.out",header=true,skipstart=6)[2]
+
+bladenum = 1 
+node = "005"
+headerNames1 = ["RtAeroFxh","RtAeroFyh","RtAeroFzh"]#,"RtAeroMxh","RtAeroMyh","RtAeroMzh","RtAeroPwr",]#"AB$(bladenum)N$(node)STVx","AB$(bladenum)N$(node)STVy","AB$(bladenum)N$(node)STVz","AB$(bladenum)N$(node)Vx","AB$(bladenum)N$(node)Vy","AB$(bladenum)N$(node)Alpha","AB$(bladenum)N$(node)Fx","AB$(bladenum)N$(node)Fy"] #"RtAeroFyh","RtAeroFxh", "B$(bladenum)AeroFxg","B$(bladenum)AeroFyg"
+
+plotdata1_standalone = zeros(length(headerNames1),length(standalone_AD[:,1]))
+# plotdata1_stiff = zeros(length(headerNames1),length(standalone_AD[:,1]))
+plotdata1_direct = zeros(length(headerNames1),length(standalone_AD[:,1]))
+time_library_direct = zeros(length(standalone_AD[:,1]))
 
 
-# println("Saving VTK time domain files")
-# OWENS.gyricFEA_VTK("$path/vtk/OWENS_test_HAWT1",t,uHist,system,assembly,sections;scaling=1)#,azi=aziHist)
+# Since we did correction stepping with the library, we need to filter out each unique timestep, preferrably the aeroDistLoadsArrayTime
+for (idx_t_standalone, time) in enumerate(standalone_AD[1:end-1,1])
 
-# ######################################
-# #### Plot Comparison
-# #######################################
+    idx_t_direct = findlast(x->x==time,library_ADside_direct[:,1])
+    time_library_direct[idx_t_standalone] = library_ADside_direct[idx_t_direct,1]
 
-# # Load Standalone Data
-# standalone_AD = DelimitedFiles.readdlm("$path/HAWT_standalone_test.out",skipstart=8)
-# header_standalone = DelimitedFiles.readdlm("$path/HAWT_standalone_test.out",header=true,skipstart=6)[2]
+    for (ihead,header_name) in enumerate(headerNames1)
+        header_idx_standalone = findfirst(x->x==header_name,header_standalone)
+        
+        header_idx_library = findfirst(x->x==headerNames1[ihead],header_library_direct)
+        
+        # println("$header_name $header_idx_standalone $header_idx_library")
+        plotdata1_standalone[ihead,idx_t_standalone] = standalone_AD[idx_t_standalone,header_idx_standalone[2]]
+        plotdata1_direct[ihead,idx_t_standalone] = library_ADside_direct[idx_t_direct,header_idx_library[2]]
+    end
+end
 
-# # Compare with Current Data on the AeroDyn Side
-# library_ADside = DelimitedFiles.readdlm("$adi_rootname.out",skipstart=8)
-# header_library = DelimitedFiles.readdlm("$adi_rootname.out",header=true,skipstart=6)[2]
+# Now get the mapped forces:
+fm_direct = zeros(6,length(ForceValHist[:,1]))
+Fxh_direct = zeros(length(ForceValHist[:,1]))
+Fyh_direct = zeros(length(ForceValHist[:,1]))
+Fzh_direct = zeros(length(ForceValHist[:,1]))
 
-# # library_ADside_owens_stiff_one_way = DelimitedFiles.readdlm("$path/$adi_rootname_twoway.out",skipstart=8)
-# # header_library_owens_stiff_one_way = DelimitedFiles.readdlm("$path/$adi_rootname_twoway.out",header=true,skipstart=6)[2]
+for i_time = 1:length(ForceValHist[:,1])
+    # Get values from the library, but at the owens loads side.
+    Fxh_direct[i_time] = sum(Fxhist[:,i_time])
+    Fyh_direct[i_time] = sum(Fyhist[:,i_time])
+    Fzh_direct[i_time] = sum(Fzhist[:,i_time])
+    for idof = 1:6
+        dof_end = maximum(bladeIdx[bladenum,:])*6-6+idof
+        dof_start = minimum(bladeIdx[bladenum,:])*6-6+idof
+        fm_direct[idof,i_time] = sum(ForceValHist[i_time,dof_start:6:dof_end])
+    end
+end
 
-# # headerNames = ["AB4N006Vrel","AB1N002Alpha","AB4N006STVx","AB4N006STVy","AB4N006STVz","B1AeroFx","B1AeroFy","B1AeroFz"]
-# bladenum= "1"
-# node = "018"
-# bladenum2= bladenum#"1"
-# bladenum3 = 1
-# # headerNames1 = ["B$(bladenum)AeroFxg","B$(bladenum)AeroFyg","B$(bladenum)AeroFzg","B$(bladenum)AeroMxg","B$(bladenum)AeroMyg","B$(bladenum)AeroMzg"] #["AB$(bladenum)N$(node)Vrel","AB$(bladenum)N$(node)Alpha","AB$(bladenum)N$(node)STVx","AB$(bladenum)N$(node)STVy","AB$(bladenum)N$(node)STVz","AB$(bladenum)N$(node)Fn","AB$(bladenum)N$(node)Ft","B$(bladenum)AeroFx","B$(bladenum)AeroFy","B$(bladenum)AeroFz"]
-# # headerNames2 = ["B$(bladenum2)AeroFxg","B$(bladenum2)AeroFyg","B$(bladenum2)AeroFzg","B$(bladenum2)AeroMxg","B$(bladenum2)AeroMyg","B$(bladenum2)AeroMzg"] #["AB$(bladenum2)N$(node)Vrel","AB$(bladenum2)N$(node)Alpha","AB$(bladenum2)N$(node)STVx","AB$(bladenum2)N$(node)STVy","AB$(bladenum2)N$(node)STVz","AB$(bladenum2)N$(node)Fn","AB$(bladenum2)N$(node)Ft","B$(bladenum2)AeroFx","B$(bladenum2)AeroFy","B$(bladenum2)AeroFz"]
+# DCM = OpenFASTWrappers.createGeneralTransformationMatrix(ang1,angle_axes)
 
-# headerNames1 = headerNames2 = ["AB$(bladenum)N$(node)Ft"]#B1Azimuth"]#AB1N001Alpha"]#["B$(bladenum)AeroFxg"]
+fx_directcall = fm_direct[1,:].*cos.(AziHist).-fm_direct[2,:].*sin.(AziHist)
+fy_directcall = fm_direct[1,:].*sin.(AziHist).+fm_direct[2,:].*cos.(AziHist)
+mx_directcall = fm_direct[4,:].*cos.(AziHist).-fm_direct[5,:].*sin.(AziHist)
+my_directcall = fm_direct[4,:].*sin.(AziHist).+fm_direct[5,:].*cos.(AziHist)
 
-# plotdata1_standalone = zeros(length(headerNames1),length(standalone_AD[:,1]))
-# plotdata1_library = zeros(length(headerNames1),length(standalone_AD[:,1]))
-# time_library = zeros(length(standalone_AD[:,1]))
+PyPlot.rc("figure", figsize=(4.5, 3))
+PyPlot.close("all")
 
-# plotdata1_library_stiff_one_way = zeros(length(headerNames1),length(standalone_AD[:,1]))
-# time_library_stiff_one_way = zeros(length(standalone_AD[:,1]))
+for (ihead,header_name) in enumerate(headerNames1)
 
+    PyPlot.figure()
+    PyPlot.plot(standalone_AD[2:end-1,1],plotdata1_standalone[ihead,2:end-1],"k-",label="Standalone OLAF Output")
+    PyPlot.plot(time_library_direct[2:end-1].+dt,plotdata1_direct[ihead,1:end-2],color=plot_cycle[3],"+",label="Direct Library OLAF Side")
+    PyPlot.ylabel("$header_name")
+    PyPlot.xlabel("Time (s)")
 
-# # Since we did correction stepping with the library, we need to filter out each unique timestep, preferrably the aeroDistLoadsArrayTime
-# for (idx_t_standalone, time) in enumerate(standalone_AD[1:end-1,1])
+    if contains(header_name,"Fxg")
+        PyPlot.plot(ts[2:end],fx_directcall,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    end
+    if contains(header_name,"Fyg")
+        PyPlot.plot(ts[2:end],fy_directcall,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    end
 
-#     idx_t_library = findlast(x->x==time,library_ADside[:,1])
-#     time_library[idx_t_standalone] = library_ADside[idx_t_library,1]
+    if contains(header_name,"Fxh")
+        PyPlot.plot(ts[2:end],Fzh_direct,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    end
+    if contains(header_name,"Fyh")
+        PyPlot.plot(ts[2:end],-Fyh_direct,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    end
+    if contains(header_name,"Fzh")
+        PyPlot.plot(ts[2:end],Fxh_direct,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    end
     
-#     # idx_t_library_stiff_one_way = findlast(x->x==time,library_ADside_owens_stiff_one_way[:,1])
-#     # time_library_stiff_one_way[idx_t_standalone] = library_ADside_owens_stiff_one_way[idx_t_library_stiff_one_way,1]
+    PyPlot.legend()
+    # PyPlot.xlim([0.4,0.5])
+    PyPlot.savefig("$(path)/$header_name.pdf",transparent = true)
+end
 
-#     # println(idx_t_library)
-#     #AOA, structural velocity, and structural loads
-#     for (ihead,header_name) in enumerate(headerNames1)
-#         header_idx_standalone = findfirst(x->x==header_name,header_standalone)
-        
-#         header_idx_library = findfirst(x->x==headerNames2[ihead],header_library)
-        
-#         # println("$header_name $header_idx_standalone $header_idx_library")
-
-#         # @test isapprox(standalone_AD[idx_t_standalone,header_idx[2]],library_ADside[idx_t_library,header_idx[2]])
-#         plotdata1_standalone[ihead,idx_t_standalone] = standalone_AD[idx_t_standalone,header_idx_standalone[2]]
-#         plotdata1_library[ihead,idx_t_standalone] = library_ADside[idx_t_library,header_idx_library[2]]
-
-#         # header_idx_library_owens_stiff_one_way = findfirst(x->x==headerNames2[ihead],header_library_owens_stiff_one_way)
-#         # plotdata1_library_stiff_one_way[ihead,idx_t_standalone] = library_ADside_owens_stiff_one_way[idx_t_library_stiff_one_way,header_idx_library_owens_stiff_one_way[2]]
-        
-#     end
-# end
-
-# import PyPlot
-# PyPlot.pygui(true)
-# PyPlot.rc("figure", figsize=(15, 15))
-# PyPlot.close("all")
-
-# for (ihead,header_name) in enumerate(headerNames1)
-
-#     PyPlot.figure()
-#     PyPlot.plot(standalone_AD[1:end-1,1],plotdata1_standalone[ihead,1:end-1],"k-",label="standalone")
-#     PyPlot.plot(time_library[1:end-1].+dt*2,plotdata1_library[ihead,1:end-1],color=plot_cycle[1],":",label="aerodyn side library")
-
-#     # PyPlot.plot(time_library[1:end-1].+dt,fx_owensside[1:end-1],color=plot_cycle[1],"--",label="xowens side library")
-
-    
-#     PyPlot.ylabel(header_name)
-#     PyPlot.xlabel("Time (s)")
-#     PyPlot.legend()
-#     # PyPlot.ylim([-4000,4000])
-# end
+PyPlot.figure()
+# PyPlot.plot(standalone_AD[2:end-1,1],plotdata1_standalone[1,3:end],color=plot_cycle[1],"-")
+# PyPlot.plot(standalone_AD[2:end-1,1],fx_directcall[2:end-1],color=plot_cycle[2],"-")
+PyPlot.plot(standalone_AD[2:end-1,1],(plotdata1_standalone[1,3:end].-fx_directcall[2:end-1])./plotdata1_standalone[1,3:end].*100,color=plot_cycle[1],"-")
+PyPlot.ylabel("Percent Difference (%)")
+PyPlot.xlabel("Time (s)")
+PyPlot.legend()
