@@ -1518,11 +1518,11 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
             Twist   = turbine.Ort.Twist_d[idx]  - rad2deg(u_j[(idx-1)*6+6])
 
             if turbine.isHAWT
-                angle_axes = [2,3,1,2,3,2]
-                ang = [-90,180,Twist,Theta,Psi,90]
+                angle_axes = [2,1,2,3,2]
+                ang = [90,Twist,Theta,Psi,90]
             else
-                angle_axes = [1,2,3]
-                ang = [Twist,Theta,Psi]
+                angle_axes = [2,1,2,3]
+                ang = [-90,Twist,Theta,Psi]
             end
 
             DCM = createGeneralTransformationMatrix(ang,angle_axes) * CH2G
