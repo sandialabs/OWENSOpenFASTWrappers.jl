@@ -86,7 +86,7 @@ mymesh,myel,myort,myjoint,sectionPropsArray,mass_twr, mass_bld,
     NuMad_geom_xlscsv_file_bld = nothing,
     NuMad_mat_xlscsv_file_bld = nothing,
     stack_layers_bld = nothing,
-    Ht,
+    Ht = 1e-6,
     ntelem = 10, #tower elements
     nbelem = 19, #blade elements
     ncelem = 10,
@@ -111,8 +111,6 @@ mymesh,myel,myort,myjoint,sectionPropsArray,mass_twr, mass_bld,
     # bshapex_tip = LinRange(R_biwing,R_tip,nbelem_tip+1), #Blade shape, magnitude is relevant
     # bshapez_tip = zeros(nbelem_tip+1), #Blade shape, magnitude is relevant
     )
-
-
 
 
     # PyPlot.figure()
@@ -256,7 +254,7 @@ OpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname_dir
         hubAngle = [[0.0,0.0,0.0]], #deg
         hubPos      = [[0,0,Ht]],
         nacAngle = [[0.0,0.0,0.0]], #deg
-        nacPos      = [[0,0,0.0]],  
+        nacPos      = [[0,0,Ht]],  
         refPos = [[0,0.0,0.0]],
         isHAWT = true
         )

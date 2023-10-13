@@ -862,7 +862,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
         # hub
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
-        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], azi;rot_axis = 1) 
+        CG2H = calcHubRotMat(hubAngle[iturb], azi;rot_axis = 1) 
    
         if !turbine[iturb].isHAWT
             CN2P = createGeneralTransformationMatrix([-90,180],[2,3])  
@@ -1014,7 +1014,7 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
 
         # hub
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
-        CG2H = calcHubRotMat(turbine[iturb],hubAngle[iturb], azi[iturb];rot_axis = 1)  
+        CG2H = calcHubRotMat(hubAngle[iturb], azi[iturb];rot_axis = 1)  
         if !turbine[iturb].isHAWT #orient hub to expected rotatation about x, so align x with global z axis
             CN2P = createGeneralTransformationMatrix([-90,180],[2,3])  
             CG2H = CG2H*CN2P
@@ -1128,7 +1128,7 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
             # TODO: need to check that this is actually correct
             # conversion to hub coordinates (rotating)
             # TODO: for HAWT ensure loads are properly mapped from the aerodyn Rx FOR to the owens Rz FOR
-            CG2H = calcHubRotMat(turbine[iturb],zeros(3), azi[iturb])
+            CG2H = calcHubRotMat(zeros(3), azi[iturb])
             for iNode=1:mesh[iturb].numNodes
                 FMg = [Fx[iturb][iNode] Fy[iturb][iNode] Fz[iturb][iNode] Mx[iturb][iNode] My[iturb][iNode] Mz[iturb][iNode]]
                 FM = frame_convert(FMg, CG2H)
@@ -1181,7 +1181,11 @@ Extract the root positions for all ADI blades
 function getRootPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
     RootPos     = zeros(Float32,3,turbine.adi_numbl)
     # conversion from hub coordinates to global
-    CG2H = calcHubRotMat(turbine,hubAngle, azi)
+    if turbine.isHAWT
+        CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 1)
+    else
+        CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 3)
+    end
     CH2G = CG2H
     # blades
     for ibld = 1:turbine.adi_numbl
@@ -1217,10 +1221,11 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     RootAcc     = zeros(Float32,6,turbine.adi_numbl)
     ### 1. calculate relative velocity from mesh distortions
     # conversion from hub coordinates to global
-    # if turbine.isHAWT
-    #     CG2H = calcHubRotMat(turbine,hubAngle, -azi)
-    # else
-    CG2H = calcHubRotMat(turbine,hubAngle, azi)
+    if turbine.isHAWT
+        CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 1)
+    else
+        CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 3)
+    end
     # end
     CH2G = CG2H
     # blades #TODO: check the uddot, may be all 0s and shouldn't be, will be an issue for MHK turbines added mass
@@ -1299,7 +1304,12 @@ function getAD15MeshPos(turbine,u_j,azi,nacPos,hubPos,hubAngle)
     MeshPos     = zeros(Float32,3,turbine.numMeshNodes)
     iNode = 1
     # conversion from hub coordinates to global
-    CG2H = calcHubRotMat(turbine,hubAngle, azi)
+    if turbine.isHAWT
+        CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 1)
+        CG2H = createGeneralTransformationMatrix([90],[2]) * CG2H
+    else
+        CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 3)
+    end
     CH2G = CG2H
     # blades, bottom struts, top struts
     for ibld = 1:size(turbine.bladeIdx,1)
@@ -1346,10 +1356,11 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
     MeshVel     = zeros(Float32,6,turbine.numMeshNodes)
     MeshAcc     = zeros(Float32,6,turbine.numMeshNodes)
     # conversion from hub coordinates to global
-    # if turbine.isHAWT
-    #     CG2H = calcHubRotMat(turbine,hubAngle, -azi)
-    # else
-    CG2H = calcHubRotMat(turbine,hubAngle, azi)
+    if turbine.isHAWT
+        CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 1)
+    else
+        CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 3)
+    end
     # end
     CH2G = CG2H 
 
@@ -1420,7 +1431,11 @@ Note on angles
 function getRootDCM(turbine,u_j,azi,hubAngle)
     RootOrient  = zeros(9,turbine.adi_numbl)
     # conversion from hub coordinates to global
-    CG2H = calcHubRotMat(turbine,hubAngle, azi)
+    if turbine.isHAWT
+        CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 1)
+    else
+        CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 3)
+    end
     CH2G = CG2H
 
     for i=1:size(turbine.bladeElem,1)
@@ -1480,7 +1495,11 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
     #display(turbine.bladeElem)
     MeshOrient  = zeros(9,turbine.numMeshNodes)
     # conversion from hub coordinates to global
-    CG2H = calcHubRotMat(turbine,hubAngle, azi)
+    if turbine.isHAWT
+        CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 1)
+    else
+        CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 3)
+    end
     CH2G = CG2H
     iNode=0
     for ibld=1:size(turbine.bladeElem,1)
@@ -1498,14 +1517,13 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
             Theta   = turbine.Ort.Theta_d[idx]  - rad2deg(u_j[(idx-1)*6+5])
             Twist   = turbine.Ort.Twist_d[idx]  - rad2deg(u_j[(idx-1)*6+6])
 
-            # if turbine.isHAWT
-            #     angle_axes = [2,3,2,1]
-            #     ang1 = [-90, Psi, Theta, Twist]
-            #     ang2 = [ 90, Psi, Theta, Twist]
-            # else
-            angle_axes = [1,2,3]
-            ang = [Twist,Theta,Psi]
-            # end
+            if turbine.isHAWT
+                angle_axes = [2,3,1,2,3,2]
+                ang = [-90,180,Twist,Theta,Psi,90]
+            else
+                angle_axes = [1,2,3]
+                ang = [Twist,Theta,Psi]
+            end
 
             DCM = createGeneralTransformationMatrix(ang,angle_axes) * CH2G
 
@@ -1652,7 +1670,7 @@ function frame_convert(init_frame_vals, trans_mat)
     return out_frame_vals
 end
 
-function calcHubRotMat(turbine,ptfmRot, azi_j;rot_axis = 3)
+function calcHubRotMat(ptfmRot, azi_j;rot_axis = 3)
     # CN2P = transMat(ptfmRot[1], ptfmRot[2], ptfmRot[3])
     CP2H = createGeneralTransformationMatrix([azi_j*180/pi],[rot_axis])
     CN2P = createGeneralTransformationMatrix(ptfmRot,[1,2,3])
