@@ -334,9 +334,9 @@ header_standalone = DelimitedFiles.readdlm("$path/HAWT_standalone_test.out",head
 library_ADside_direct = DelimitedFiles.readdlm("$adi_rootname_direct.out",skipstart=8)
 header_library_direct = DelimitedFiles.readdlm("$adi_rootname_direct.out",header=true,skipstart=6)[2]
 
-bladenum = 1 
+bladenum = 2
 node = "005"
-headerNames1 = ["RtAeroFxh","RtAeroFyh","RtAeroFzh"]#,"RtAeroMxh","RtAeroMyh","RtAeroMzh","RtAeroPwr",]#"AB$(bladenum)N$(node)STVx","AB$(bladenum)N$(node)STVy","AB$(bladenum)N$(node)STVz","AB$(bladenum)N$(node)Vx","AB$(bladenum)N$(node)Vy","AB$(bladenum)N$(node)Alpha","AB$(bladenum)N$(node)Fx","AB$(bladenum)N$(node)Fy"] #"RtAeroFyh","RtAeroFxh", "B$(bladenum)AeroFxg","B$(bladenum)AeroFyg"
+headerNames1 = ["RtAeroFxh","RtAeroFyh","RtAeroFzh","AB$(bladenum)N$(node)STVx","AB$(bladenum)N$(node)STVy","AB$(bladenum)N$(node)STVz","AB$(bladenum)N$(node)Vx","AB$(bladenum)N$(node)Vy","AB$(bladenum)N$(node)Alpha","AB$(bladenum)N$(node)Fx","AB$(bladenum)N$(node)Fy"] #"RtAeroFyh","RtAeroFxh", "B$(bladenum)AeroFxg","B$(bladenum)AeroFyg"
 
 plotdata1_standalone = zeros(length(headerNames1),length(standalone_AD[:,1]))
 # plotdata1_stiff = zeros(length(headerNames1),length(standalone_AD[:,1]))
@@ -397,22 +397,22 @@ for (ihead,header_name) in enumerate(headerNames1)
     PyPlot.ylabel("$header_name")
     PyPlot.xlabel("Time (s)")
 
-    if contains(header_name,"Fxg")
-        PyPlot.plot(ts[2:end],fx_directcall,color=plot_cycle[1],".",label="Direct Library OWENS Side")
-    end
-    if contains(header_name,"Fyg")
-        PyPlot.plot(ts[2:end],fy_directcall,color=plot_cycle[1],".",label="Direct Library OWENS Side")
-    end
+    # if contains(header_name,"Fxg")
+    #     PyPlot.plot(ts[2:end],fx_directcall,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    # end
+    # if contains(header_name,"Fyg")
+    #     PyPlot.plot(ts[2:end],fy_directcall,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    # end
 
-    if contains(header_name,"Fxh")
-        PyPlot.plot(ts[2:end],Fzh_direct,color=plot_cycle[1],".",label="Direct Library OWENS Side")
-    end
-    if contains(header_name,"Fyh")
-        PyPlot.plot(ts[2:end],-Fyh_direct,color=plot_cycle[1],".",label="Direct Library OWENS Side")
-    end
-    if contains(header_name,"Fzh")
-        PyPlot.plot(ts[2:end],Fxh_direct,color=plot_cycle[1],".",label="Direct Library OWENS Side")
-    end
+    # if contains(header_name,"Fxh")
+    #     PyPlot.plot(ts[2:end],Fzh_direct,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    # end
+    # if contains(header_name,"Fyh")
+    #     PyPlot.plot(ts[2:end],-Fyh_direct,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    # end
+    # if contains(header_name,"Fzh")
+    #     PyPlot.plot(ts[2:end],Fxh_direct,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    # end
     
     PyPlot.legend()
     # PyPlot.xlim([0.4,0.5])

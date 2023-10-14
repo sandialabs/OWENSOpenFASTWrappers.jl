@@ -1241,11 +1241,11 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
     ### 2. Tangential velocity due to hub rotation
     # calculate distance of point from hub axis, multiply by Omega_rad for tangential velocity component
     # hub axis vector in global coordinates
-    # if turbine.isHAWT
-    hubAxis = CG2H[:,3]
-    # else
-    #     hubAxis = CG2H[:,1]
-    # end
+    if turbine.isHAWT
+        hubAxis = CG2H[:,1]
+    else
+        hubAxis = CG2H[:,3]
+    end
 
     for ibld = 1:size(RootVel,2)
         # Global coordinates
@@ -1365,11 +1365,11 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
     CH2G = CG2H 
 
     # hub axis vector in global coordinates
-    # if turbine.isHAWT
-    #     hubAxis = CG2H[:,1]
-    # else
-    hubAxis = CG2H[:,3]
-    # end
+    if turbine.isHAWT
+        hubAxis = CG2H[:,1]
+    else
+        hubAxis = CG2H[:,3]
+    end
     # blades, bottom struts, top struts
     iNode = 1
     for ibld = 1:size(turbine.bladeIdx,1)
@@ -1383,7 +1383,7 @@ function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot
             MeshAcc[1:3,iNode] = uddot_j[idx+1:idx+3]' * CH2G     # translation Acc (m/s^2)
             MeshAcc[4:6,iNode] = uddot_j[idx+4:idx+6]' * CH2G     # rotation    Acc (rad/s^2)
 
-#FIXME: missing tangential velocity components due to hub rotational velocity not about hub axis
+            #FIXME: missing tangential velocity components due to hub rotational velocity not about hub axis
             ### 2. Tangential velocity due to hub rotation
             # tangential velocity and acceleration, based on distance to hub axis
             # TODO: meshPos-nacPos may be incorrect for the struts - velocity needs to be in the global FOR, and aerodyn converts via the orientations to go into blade orientation (STXv)
