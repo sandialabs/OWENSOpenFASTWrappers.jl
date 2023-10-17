@@ -4,6 +4,8 @@ A repository containing julia wrappers for standalone openFAST modules.
 
 ## Quick Start for Developing Julia Packages
 
+Please make all feature changes and bug fixes as branches and then create pull requests against the dev branch.  The dev branch will be periodically pulled into master.
+
 - include("./path/modulename.jl/src/modulename.jl") is like a copy and paste and will reload the module every time the script is run
 
 - installing a module by navigating to the module's working directory (and in an interactive julia session), running "] dev ." will install it in dev mode and will pick up changes made in the local package location every time julia restarts.

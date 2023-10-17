@@ -773,22 +773,22 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     transposeDCM= 1,          # 0=false, 1=true transpose DCM internally for calculations
     WrVTK       = 2,          # write VTK files from adi to directory adi-vtk [0 none, 1 ref, 2 motion]
     WrVTK_Type  = 3,          # write VTK files from adi to directory adi-vtk [1 surface, 2 lines, 3 both]
-    VTKNacDim   = [-.10 ,-.10 ,-.10 ,.2 ,.2 ,.2],        # Nacelle Dimension for VTK visualization x0,y0,z0,Lx,Ly,Lz (m)
     VTKHubRad   = 1.0,                          # HubRadius for VTK visualization (m)
     adi_wrOuts  = 0,                            # output file format [0 none, 1 txt, 2 binary, 3 both]
     adi_DT_Outs = 0.0,                          # output frequency (resets to dt if smaller)
-    adi_nstrut  = [2],                            # create_mesh_struts is hard coded for 2 struts per blade
     adi_dt      = 0.05,                         # random default
     adi_tmax    = 10,                           # end time
-    omega       = [0],                          # rad/s
-    hubPos      = [[0,0,0]],                      # m
-    hubAngle    = [[0,0,0]],                      # deg , no rotation from spinning
-    numTurbines = 1,
-    refPos      = [[0,0,0]],                      # turbine location
     isHAWT      = false,                          # false: VAWT or cross-flow turbine, true: HAWT
     adi_debug   = 0,                              #0 is no debug outputs
-    nacPos      = [[0,0,0]],                      # m
-    nacAngle    = [[0,0,0]],                      # m
+    VTKNacDim   = [-.10 ,-.10 ,-.10 ,.2 ,.2 ,.2],        # Nacelle Dimension for VTK visualization x0,y0,z0,Lx,Ly,Lz (m)
+    numTurbines = 1,
+    adi_nstrut  = [2 for i=1:numTurbines],                            # create_mesh_struts is hard coded for 2 struts per blade
+    omega       = [0 for i=1:numTurbines],                          # rad/s
+    hubPos      = [zeros(3) for i=1:numTurbines],                      # m
+    hubAngle    = [zeros(3) for i=1:numTurbines],                      # deg , no rotation from spinning
+    refPos      = [zeros(3) for i=1:numTurbines],                      # turbine location
+    nacPos      = [zeros(3) for i=1:numTurbines],                      # m
+    nacAngle    = [zeros(3) for i=1:numTurbines],                      # m
     )
 
     # load library and set number of turbines
@@ -1128,7 +1128,11 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
             # TODO: need to check that this is actually correct
             # conversion to hub coordinates (rotating)
             # TODO: for HAWT ensure loads are properly mapped from the aerodyn Rx FOR to the owens Rz FOR
-            CG2H = calcHubRotMat(zeros(3), azi[iturb])
+            if turbine[iturb].isHAWT
+                CG2H = calcHubRotMat(zeros(3), azi[iturb];rot_axis = 1)
+            else
+                CG2H = calcHubRotMat(zeros(3), azi[iturb];rot_axis = 3)
+            end
             for iNode=1:mesh[iturb].numNodes
                 FMg = [Fx[iturb][iNode] Fy[iturb][iNode] Fz[iturb][iNode] Mx[iturb][iNode] My[iturb][iNode] Mz[iturb][iNode]]
                 FM = frame_convert(FMg, CG2H)
