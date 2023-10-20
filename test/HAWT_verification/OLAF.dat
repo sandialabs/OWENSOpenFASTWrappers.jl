@@ -3,7 +3,7 @@ Free wake input file for the BAR turbine
 --------------------------- GENERAL OPTIONS ---------------------------------------------------
 5             IntMethod     - Integration method {1: RK4, 5: Forward Euler 1st order, default: 5} (switch)
 default       DTfvw         - Time interval for wake propagation. {default: dtaero} (s)
-9999           FreeWakeStart - Time when wake is free. (-) value = always free. {default: 0.0} (s)
+0.0           FreeWakeStart - Time when wake is free. (-) value = always free. {default: 0.0} (s)
 0.1           FullCircStart - Time at which full circulation is reached. {default: 0.0} (s)
 --------------------------- CIRCULATION SPECIFICATIONS ----------------------------------------
 1             CircSolvingMethod - Circulation solving method {1: Cl-Based, 2: No-Flow Through, 3: Prescribed, default: 1 }(switch)
@@ -47,6 +47,3 @@ GridName	DTOut         - XStart XEnd nX YStart YEnd nY ZStart ZEnd nZ
 "vert"    default      -10       30.   400     -0.      0.     1     0    80  100 
 "vert2"   default      -10       30.   400     5.      5.     1     5.136    15.136  100 
 ===============================================================================================
---------------------------- ADVANCED OPTIONS --------------------------------------------------
-===============================================================================================
-False   Induction          – If true, induced velocity is included on the lifting line.
