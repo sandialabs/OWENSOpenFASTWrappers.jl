@@ -4,7 +4,7 @@ HAWT
 True           Echo - Echo input parameters to "<rootname>.ech"?
          0     MHK          - MHK turbine type (switch) {0: not an MHK turbine, 1: fixed MHK turbine, 2: floating MHK turbine}   
 1              AnalysisType - {1: multiple turbines, one simulation, 2: one turbine, one time-dependent simulation, 3: one turbine, combined cases}
-0.1           TMax - Total run time [used only when AnalysisType/=3] (s)
+2.0            TMax - Total run time [used only when AnalysisType/=3] (s)
 0.01           DT - Simulation time step [used only when AnalysisType/=3] (s)
 ./ad_primary.dat     AeroFile - Name of the primary AeroDyn input file 
 ----- Environmental Conditions ----------------------------------------------------------
@@ -35,11 +35,11 @@ True       HAWTprojection(1) - True if turbine is a horizontal axis turbine (for
 ----- Turbine(1) Blades -----------------------------------------------------------------
 3  NumBlades(1) - Number of blades for current rotor (-)
 0,0,0           BldOrigin_h(1_1)      - Orign of blade 1 wrt. hub origin in hub coordinates (m)
-0,0,0           BldOrigin_h(1_2)      - Orign of blade 2 wrt. hub origin in hub coordinates (m)
 0,0,0           BldOrigin_h(1_3)      - Orign of blade 3 wrt. hub origin in hub coordinates (m)
+0,0,0           BldOrigin_h(1_2)      - Orign of blade 2 wrt. hub origin in hub coordinates (m)
 0  ,0,0        BldOrientation_h(1_1) - successive rotations (theta_x, theta_y, theta_z) defining initial orientation of the blade frame from the hub frame such that the "z" is along span, "y" along trailing edge without pitch (azimuth, precone, pitch) (deg)
-120,0,0        BldOrientation_h(1_2) - successive rotations (theta_x, theta_y, theta_z) defining initial orientation of the blade frame from the hub frame such that the "z" is along span, "y" along trailing edge without pitch (azimuth, precone, pitch) (deg)
 240,0,0        BldOrientation_h(1_3) - successive rotations (theta_x, theta_y, theta_z) defining initial orientation of the blade frame from the hub frame such that the "z" is along span, "y" along trailing edge without pitch (azimuth, precone, pitch) (deg)
+120,0,0        BldOrientation_h(1_2) - successive rotations (theta_x, theta_y, theta_z) defining initial orientation of the blade frame from the hub frame such that the "z" is along span, "y" along trailing edge without pitch (azimuth, precone, pitch) (deg)
 0.0             BldHubRad_bl(1_1)     - z-offset in blade coordinates of blade 1 where radial input data start (m)
 0.0             BldHubRad_bl(1_2)     - z-offset in blade coordinates of blade 2 where radial input data start (m)
 0.0             BldHubRad_bl(1_3)     - z-offset in blade coordinates of blade 3 where radial input data start (m)
