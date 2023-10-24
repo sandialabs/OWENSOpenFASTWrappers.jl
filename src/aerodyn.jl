@@ -1431,6 +1431,7 @@ Note on angles
 * `hubAngle`:   3 angle set for hub orientation (rad), no rotation from spinning
 
 #FIXME: add averaging of orientations to get nodes within blade/strut
+#FIXME:CW/CCW -- this routine assumes CW for HAWT, and CCW for VAWT.  This needs to be fixed.  See notes below
 """
 function getRootDCM(turbine,u_j,azi,hubAngle)
     RootOrient  = zeros(9,turbine.adi_numbl)
@@ -1449,8 +1450,15 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
         Twist   = turbine.Ort.Twist_d[idx]  #- rad2deg(u_j[(idx-1)*6+6])
 
         if turbine.isHAWT
+            # CW is for the standard clockwise rotation of a HAWT (when standing in front of it looking towards the rotor along
+            # +X global direction)
+            # CCW has not been developed for the HAWT
             angle_axes1 = [2,3,1]
-            ang1 = [180+Theta,Twist,Psi]
+            #if turbine.rotateCCW
+            #ang1 = [180+Theta,180+Twist,Psi]    # CCW
+            #else
+            ang1 = [180+Theta,Twist,Psi]        # CW
+            #end
         else
             # blades
             #   Y is always towards trailing edge in both OWENS and AD15.
@@ -1458,12 +1466,22 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
             #   AD15 CCW, AD15 blade root is at top with +Z pointing downwards along span
             #   AD15 CW,  AD15 blade root is at bottom with +Z upwards along span
             angle_axes1 = [2,1,2,3]
-            ang1 = [-90,0.0,-90.0,Psi]
+            #if turbine.rotateCCW
+            ang1 = [-90,Twist,-90.0,Psi]      # CCW
+            #else
+#FIXME:CW for clockwise, the blade root will be at the bottom of the blade instead of at the top, so Z is upwards and Y is to
+#trailing edge.  New logic is needed here to setup the blade roots correctly.  I don't have time right now to do that.
+            #end
+
             # struts
             #   Y is always towards trailing edge in both OWENS and AD15
             #   OWENS always has Z point towards hub. AD15 always has Z point away from hub.
             angle_axes2 = [2,1,2,3]
-            ang2 = [90,Twist,Theta,Psi]
+            #if turbine.rotateCCW
+            ang2 = [90,Twist,Theta,Psi]     # CCW
+            #else
+            #ang2 = [90,Twist+180,Theta,Psi] # CW -- FIXME:CW this has not been tested!!!!
+            #end
         end
 
         if i<=turbine.B
