@@ -1440,7 +1440,7 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
     else
         CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 3)
     end
-    CH2G = CG2H
+    CH2G = CG2H'
 
     for i=1:size(turbine.bladeElem,1)
         idx=turbine.bladeElem[i]    #,1]
@@ -1453,18 +1453,27 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
             ang1 = [-180,Twist,-90.0,Psi,-90]
             # ang2 = [0,Twist,Theta,Psi,-90] Shouldn't be used for normal hawt..
         else
-            angle_axes = [2,1,2,3]
+            # blades
+            #   Y is always towards trailing edge in both OWENS and AD15.
+            #   X in OWENS is always outward
+            #   AD15 CCW, AD15 blade root is at top with +Z pointing downwards along span
+            #   AD15 CW,  AD15 blade root is at bottom with +Z upwards along span
+            angle_axes1 = [2,1,2,3]
             ang1 = [-90,0.0,-90.0,Psi]
+            # struts
+            #   Y is always towards trailing edge in both OWENS and AD15
+            #   OWENS always has Z point towards hub. AD15 always has Z point away from hub.
+            angle_axes2 = [2,1,2,3]
             ang2 = [90,Twist,Theta,Psi]
         end
 
+        println("blade root $i    : $(Twist) $(Theta)  $(Psi)")
         if i<=turbine.B
             #FIME: the following is for a CCW spinning rotor.  some things need changing for a CW spinning rotor.
             # flip +z towards X, then apply Twist (Roll, Rx) -> Theta (Pitch, Ry) -> Psi (Yaw, Rz) 
-            #TODO: connection deformations from u_j
-            DCM = createGeneralTransformationMatrix(ang1,angle_axes) * CH2G
+            DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes1)'
         else
-            DCM = createGeneralTransformationMatrix(ang2,angle_axes)' * CH2G
+            DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes2)'
         end
 
         # if turbine.isHAWT
@@ -1504,7 +1513,7 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
     else
         CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 3)
     end
-    CH2G = CG2H
+    CH2G = CG2H'
     iNode=0
     for ibld=1:size(turbine.bladeElem,1)
         lenbld = turbine.bladeElem[ibld,2] - turbine.bladeElem[ibld,1]
@@ -1529,14 +1538,14 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
                 ang = [-90,Twist,Theta,Psi]
             end
 
-            DCM = createGeneralTransformationMatrix(ang,angle_axes) * CH2G
+            DCM =  CH2G * createGeneralTransformationMatrix(ang,angle_axes)'
 
             iNode += 1
-            MeshOrient[:,iNode] = vec(DCM')
+            MeshOrient[:,iNode] = vec(DCM)
             # duplicate last node #TODO: map elements to nodes instead
             if idx==turbine.bladeElem[ibld,2]
                 iNode += 1
-                MeshOrient[:,iNode] = vec(DCM')
+                MeshOrient[:,iNode] = vec(DCM)
             end
         end     
     end
