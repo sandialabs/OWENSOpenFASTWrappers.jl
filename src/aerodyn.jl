@@ -1449,9 +1449,8 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
         Twist   = turbine.Ort.Twist_d[idx]  #- rad2deg(u_j[(idx-1)*6+6])
 
         if turbine.isHAWT
-            angle_axes = [2,1,2,3,2]
-            ang1 = [-180,Twist,-90.0,Psi,-90]
-            # ang2 = [0,Twist,Theta,Psi,-90] Shouldn't be used for normal hawt..
+            angle_axes1 = [2,3,1]
+            ang1 = [180+Theta,Twist,Psi]
         else
             # blades
             #   Y is always towards trailing edge in both OWENS and AD15.
@@ -1467,7 +1466,6 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
             ang2 = [90,Twist,Theta,Psi]
         end
 
-        println("blade root $i    : $(Twist) $(Theta)  $(Psi)")
         if i<=turbine.B
             #FIME: the following is for a CCW spinning rotor.  some things need changing for a CW spinning rotor.
             # flip +z towards X, then apply Twist (Roll, Rx) -> Theta (Pitch, Ry) -> Psi (Yaw, Rz) 
@@ -1534,6 +1532,7 @@ function getAD15MeshDCM(turbine,u_j,azi,hubAngle)
                 angle_axes = [2,1,2,3,2]
                 ang = [90,Twist,Theta,Psi,90]
             else
+                # The OWENS mesh for VAWT is always setup with X pointing away from axis of rotation, and Y towards the trailing edge
                 angle_axes = [2,1,2,3]
                 ang = [-90,Twist,Theta,Psi]
             end
