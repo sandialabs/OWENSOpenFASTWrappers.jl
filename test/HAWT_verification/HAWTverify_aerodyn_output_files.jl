@@ -42,7 +42,7 @@ num_corrections = 0
 
 dt = 0.01
 t_initial = 0.0
-t_max = 0.1
+t_max = 2.0
 ts = collect(t_initial:dt:t_max)
 numTS = length(ts)
 
@@ -283,7 +283,7 @@ for (tidx, t) in enumerate(ts[1:end-1])
         hubPos      = [0,0,Ht]                      # m
         hubAngle    = [0,0,0]                       # rad
         rotvel = omega
-        hubVel = [0,0,0,0,0,rotvel]#zeros(6)
+        hubVel = [0,0,0,rotvel,0,0]#zeros(6)
         hubAcc = zeros(6) #TODO: may eventually need this for MHK?
 
         OpenFASTWrappers.deformAD15([u_j],
@@ -336,7 +336,7 @@ header_library_direct = DelimitedFiles.readdlm("$adi_rootname_direct.out",header
 
 bladenum = 2
 node = "005"
-headerNames1 = ["RtAeroFxh","RtAeroFyh","RtAeroFzh","AB$(bladenum)N$(node)STVx","AB$(bladenum)N$(node)STVy","AB$(bladenum)N$(node)STVz","AB$(bladenum)N$(node)Vx","AB$(bladenum)N$(node)Vy","AB$(bladenum)N$(node)Alpha","AB$(bladenum)N$(node)Fx","AB$(bladenum)N$(node)Fy"] #"RtAeroFyh","RtAeroFxh", "B$(bladenum)AeroFxg","B$(bladenum)AeroFyg"
+headerNames1 = ["RtAeroFxh","RtAeroFyh","RtAeroFzh","AB$(bladenum)N$(node)STVx","AB$(bladenum)N$(node)STVy","AB$(bladenum)N$(node)STVz","AB$(bladenum)N$(node)Vx","AB$(bladenum)N$(node)Vy","AB$(bladenum)N$(node)Alpha","AB$(bladenum)N$(node)Fx","AB$(bladenum)N$(node)Fy", "B$(bladenum)AeroFxi","B$(bladenum)AeroFyi"]
 
 plotdata1_standalone = zeros(length(headerNames1),length(standalone_AD[:,1]))
 # plotdata1_stiff = zeros(length(headerNames1),length(standalone_AD[:,1]))
@@ -386,6 +386,13 @@ fy_directcall = fm_direct[1,:].*sin.(AziHist).+fm_direct[2,:].*cos.(AziHist)
 mx_directcall = fm_direct[4,:].*cos.(AziHist).-fm_direct[5,:].*sin.(AziHist)
 my_directcall = fm_direct[4,:].*sin.(AziHist).+fm_direct[5,:].*cos.(AziHist)
 
+totalFxh = [sum(Fxhist[:,itime]) for itime = 1:length(Fxhist[1,:])]
+totalFyh = [sum(Fyhist[:,itime]) for itime = 1:length(Fxhist[1,:])]
+totalFzh = [sum(Fzhist[:,itime]) for itime = 1:length(Fxhist[1,:])]
+# Mxhist
+# Myhist
+# Mzhist
+
 PyPlot.rc("figure", figsize=(4.5, 3))
 PyPlot.close("all")
 
@@ -404,15 +411,15 @@ for (ihead,header_name) in enumerate(headerNames1)
     #     PyPlot.plot(ts[2:end],fy_directcall,color=plot_cycle[1],".",label="Direct Library OWENS Side")
     # end
 
-    # if contains(header_name,"Fxh")
-    #     PyPlot.plot(ts[2:end],Fzh_direct,color=plot_cycle[1],".",label="Direct Library OWENS Side")
-    # end
-    # if contains(header_name,"Fyh")
-    #     PyPlot.plot(ts[2:end],-Fyh_direct,color=plot_cycle[1],".",label="Direct Library OWENS Side")
-    # end
-    # if contains(header_name,"Fzh")
-    #     PyPlot.plot(ts[2:end],Fxh_direct,color=plot_cycle[1],".",label="Direct Library OWENS Side")
-    # end
+    if contains(header_name,"Fxh")
+        PyPlot.plot(ts[2:end],totalFxh,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    end
+    if contains(header_name,"Fyh")
+        PyPlot.plot(ts[2:end],totalFyh,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    end
+    if contains(header_name,"Fzh")
+        PyPlot.plot(ts[2:end],totalFzh,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+    end
     
     PyPlot.legend()
     # PyPlot.xlim([0.4,0.5])

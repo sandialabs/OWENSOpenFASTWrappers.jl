@@ -1431,7 +1431,6 @@ Note on angles
 * `hubAngle`:   3 angle set for hub orientation (rad), no rotation from spinning
 
 #FIXME: add averaging of orientations to get nodes within blade/strut
-#FIXME:CW/CCW -- this routine assumes CW for HAWT, and CCW for VAWT.  This needs to be fixed.  See notes below
 """
 function getRootDCM(turbine,u_j,azi,hubAngle)
     RootOrient  = zeros(9,turbine.adi_numbl)
@@ -1453,7 +1452,7 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
             # CW is for the standard clockwise rotation of a HAWT (when standing in front of it looking towards the rotor along
             # +X global direction)
             # CCW has not been developed for the HAWT
-            angle_axes1 = [2,3,1]
+            angle_axes = [2,3,1]
             #if turbine.rotateCCW
             #ang1 = [180+Theta,180+Twist,Psi]    # CCW
             #else
@@ -1465,9 +1464,9 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
             #   X in OWENS is always outward
             #   AD15 CCW, AD15 blade root is at top with +Z pointing downwards along span
             #   AD15 CW,  AD15 blade root is at bottom with +Z upwards along span
-            angle_axes1 = [2,1,2,3]
+            angle_axes = [2,1,2,3]
             #if turbine.rotateCCW
-            ang1 = [-90,Twist,-90.0,Psi]      # CCW
+            ang1 = [-90,Twist*0.0,-90.0,Psi]      # CCW
             #else
 #FIXME:CW for clockwise, the blade root will be at the bottom of the blade instead of at the top, so Z is upwards and Y is to
 #trailing edge.  New logic is needed here to setup the blade roots correctly.  I don't have time right now to do that.
@@ -1476,7 +1475,6 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
             # struts
             #   Y is always towards trailing edge in both OWENS and AD15
             #   OWENS always has Z point towards hub. AD15 always has Z point away from hub.
-            angle_axes2 = [2,1,2,3]
             #if turbine.rotateCCW
             ang2 = [90,Twist,Theta,Psi]     # CCW
             #else
@@ -1487,9 +1485,9 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
         if i<=turbine.B
             #FIME: the following is for a CCW spinning rotor.  some things need changing for a CW spinning rotor.
             # flip +z towards X, then apply Twist (Roll, Rx) -> Theta (Pitch, Ry) -> Psi (Yaw, Rz) 
-            DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes1)'
+            DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)'
         else
-            DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes2)'
+            DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes)'
         end
 
         # if turbine.isHAWT
