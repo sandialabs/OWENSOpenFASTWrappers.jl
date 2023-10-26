@@ -29,7 +29,7 @@ plot_cycle=["#348ABD", "#A60628", "#009E73", "#7A68A6", "#D55E00", "#CC79A7"]
 include("$path/../../src/OpenFASTWrappers.jl")
 
 # # Run the standalone aerodyn
-run(`$path/../../../openfast/build/modules/aerodyn/aerodyn_driver $path/HAWT_standalone_test.dvr`)
+# run(`$path/../../../openfast/build/modules/aerodyn/aerodyn_driver $path/HAWT_standalone_test.dvr`)
 
 adi_lib = "$path/../../../openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding" #change this to match your local path of the AeroDyn DLL
 # adi_lib = "/builds/8921-VAWT-TOOLS/OpenFASTWrappers.jl/openfast/build/modules/AeroDyn/libAeroDyn_c_binding" #change this to match your local path of the AeroDyn DLL

@@ -850,15 +850,15 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         hubAcc    = zeros(Float32,2*size(hubPosTmp,1))
         nacVel    = zeros(Float32,2*size(nacPosTmp,1))
         nacAcc    = zeros(Float32,2*size(nacPosTmp,1))
-        rootVel   = zeros(Float32,2*size(rootPos,1),size(rootPos,2))
-        rootAcc   = zeros(Float32,2*size(rootPos,1),size(rootPos,2))
-        meshVel   = zeros(Float32,2*size(meshPos,1),size(meshPos,2))
-        meshAcc   = zeros(Float32,2*size(meshPos,1),size(meshPos,2))
+        # rootVel   = zeros(Float32,2*size(rootPos,1),size(rootPos,2))
+        # rootAcc   = zeros(Float32,2*size(rootPos,1),size(rootPos,2))
+        # meshVel   = zeros(Float32,2*size(meshPos,1),size(meshPos,2))
+        # meshAcc   = zeros(Float32,2*size(meshPos,1),size(meshPos,2))
 
               
-        # rootVel,rootAcc = getRootVelAcc(turbine[iturb],rootPos,udot_j,uddot_j,azi,omega[iturb],zero(omega[iturb]),nacPosTmp,hubPosTmp,hubAngle[iturb],hubVel,hubAcc)       # get root vel/acc of all AD15 blades   (blades + struts in OWENS)
+        rootVel,rootAcc = getRootVelAcc(turbine[iturb],rootPos,udot_j,uddot_j,azi,omega[iturb],zero(omega[iturb]),nacPosTmp,hubPosTmp,hubAngle[iturb],hubVel,hubAcc)       # get root vel/acc of all AD15 blades   (blades + struts in OWENS)
 
-        # meshVel,meshAcc = getAD15MeshVelAcc(turbine[iturb],meshPos,udot_j,uddot_j,azi,omega[iturb],zero(omega[iturb]),nacPosTmp,hubPosTmp,hubAngle[iturb],hubVel,hubAcc)   # get mesh vel/acc of all AD15 blades   (blades + struts in OWENS)
+        meshVel,meshAcc = getAD15MeshVelAcc(turbine[iturb],meshPos,udot_j,uddot_j,azi,omega[iturb],zero(omega[iturb]),nacPosTmp,hubPosTmp,hubAngle[iturb],hubVel,hubAcc)   # get mesh vel/acc of all AD15 blades   (blades + struts in OWENS)
 
         # hub
         #FIXME: this is not complete.  The hubVel is probably not correctly set.
@@ -866,7 +866,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
    
         if !turbine[iturb].isHAWT
             CN2P = createGeneralTransformationMatrix([-90,180],[2,3])  
-            CG2H = CG2H'*CN2P
+            CG2H = CG2H*CN2P
         end
         
         hubOrient    = vec(CG2H')
@@ -1017,7 +1017,7 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
         CG2H = calcHubRotMat(hubAngle[iturb], azi[iturb];rot_axis = 1)  
         if !turbine[iturb].isHAWT #orient hub to expected rotatation about x, so align x with global z axis
             CN2P = createGeneralTransformationMatrix([-90,180],[2,3])  
-            CG2H = CG2H'*CN2P
+            CG2H = CG2H*CN2P
         end
         # end 
         turbstruct[iturb].hubPos       = hubPos[iturb]
@@ -1130,7 +1130,6 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
             # TODO: for HAWT ensure loads are properly mapped from the aerodyn Rx FOR to the owens Rz FOR
             if turbine[iturb].isHAWT
                 CG2H = calcHubRotMat(zeros(3), azi[iturb];rot_axis = 1)
-                CG2H'
             else
                 CG2H = calcHubRotMat(zeros(3), azi[iturb];rot_axis = 3)
             end
@@ -1432,14 +1431,12 @@ Note on angles
 * `hubAngle`:   3 angle set for hub orientation (rad), no rotation from spinning
 
 #FIXME: add averaging of orientations to get nodes within blade/strut
-#FIXME:CW/CCW -- this routine assumes CW for HAWT, and CCW for VAWT.  This needs to be fixed.  See notes below
 """
 function getRootDCM(turbine,u_j,azi,hubAngle)
     RootOrient  = zeros(9,turbine.adi_numbl)
     # conversion from hub coordinates to global
     if turbine.isHAWT
         CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 1)
-        CG2H = CG2H'
     else
         CG2H = calcHubRotMat(hubAngle, azi;rot_axis = 3)
     end
@@ -1455,7 +1452,7 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
             # CW is for the standard clockwise rotation of a HAWT (when standing in front of it looking towards the rotor along
             # +X global direction)
             # CCW has not been developed for the HAWT
-            angle_axes1 = [2,3,1]
+            angle_axes = [2,3,1]
             #if turbine.rotateCCW
             #ang1 = [180+Theta,180+Twist,Psi]    # CCW
             #else
@@ -1467,9 +1464,9 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
             #   X in OWENS is always outward
             #   AD15 CCW, AD15 blade root is at top with +Z pointing downwards along span
             #   AD15 CW,  AD15 blade root is at bottom with +Z upwards along span
-            angle_axes1 = [2,1,2,3]
+            angle_axes = [2,1,2,3]
             #if turbine.rotateCCW
-            ang1 = [-90,Twist,-90.0,Psi]      # CCW
+            ang1 = [-90,Twist*0.0,-90.0,Psi]      # CCW
             #else
 #FIXME:CW for clockwise, the blade root will be at the bottom of the blade instead of at the top, so Z is upwards and Y is to
 #trailing edge.  New logic is needed here to setup the blade roots correctly.  I don't have time right now to do that.
@@ -1478,7 +1475,6 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
             # struts
             #   Y is always towards trailing edge in both OWENS and AD15
             #   OWENS always has Z point towards hub. AD15 always has Z point away from hub.
-            angle_axes2 = [2,1,2,3]
             #if turbine.rotateCCW
             ang2 = [90,Twist,Theta,Psi]     # CCW
             #else
@@ -1489,9 +1485,9 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
         if i<=turbine.B
             #FIME: the following is for a CCW spinning rotor.  some things need changing for a CW spinning rotor.
             # flip +z towards X, then apply Twist (Roll, Rx) -> Theta (Pitch, Ry) -> Psi (Yaw, Rz) 
-            DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes1)'
+            DCM = CH2G * createGeneralTransformationMatrix(ang1,angle_axes)'
         else
-            DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes2)'
+            DCM = CH2G * createGeneralTransformationMatrix(ang2,angle_axes)'
         end
 
         # if turbine.isHAWT
