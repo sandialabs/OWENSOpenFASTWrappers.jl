@@ -17,7 +17,7 @@ PyPlot.rc("lines", linewidth=1.5)
 PyPlot.rc("lines", markersize=4.0)
 PyPlot.rc("legend", frameon=true)
 PyPlot.rc("axes.spines", right=false, top=false)
-PyPlot.rc("figure.subplot", left=.18, bottom=.17, top=0.9, right=.9)
+PyPlot.rc("figure.subplot", left=.21, bottom=.17, top=0.9, right=.9)
 PyPlot.rc("figure",max_open_warning=500)
 # PyPlot.rc("axes", prop_cycle=["348ABD", "A60628", "009E73", "7A68A6", "D55E00", "CC79A7"])
 plot_cycle=["#348ABD", "#A60628", "#009E73", "#7A68A6", "#D55E00", "#CC79A7"]
@@ -29,20 +29,21 @@ plot_cycle=["#348ABD", "#A60628", "#009E73", "#7A68A6", "#D55E00", "#CC79A7"]
 include("$path/../../src/OpenFASTWrappers.jl")
 
 # # Run the standalone aerodyn
-# run(`$path/../../../openfast/build/modules/aerodyn/aerodyn_driver $path/HAWT_standalone_test.dvr`)
+run(`$path/../../../openfast/build/modules/aerodyn/aerodyn_driver $path/HAWT_standalone_test.dvr`)
 
 adi_lib = "$path/../../../openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding" #change this to match your local path of the AeroDyn DLL
 # adi_lib = "/builds/8921-VAWT-TOOLS/OpenFASTWrappers.jl/openfast/build/modules/AeroDyn/libAeroDyn_c_binding" #change this to match your local path of the AeroDyn DLL
 
 # output files from ADI
 adi_rootname_direct = "$path/HAWT_OWENS_AD15"
+adi_rootname_FSI = "$path/HAWT_OWENS_AD15FSI"
 
 num_corrections = 0
 
 
 dt = 0.01
 t_initial = 0.0
-t_max = 2.0
+t_max = 0.5
 ts = collect(t_initial:dt:t_max)
 numTS = length(ts)
 
@@ -66,7 +67,7 @@ shapeX = LinRange(0,R,Nslices+1)
 shapeY = zero(shapeX)
 
 mymesh,myel,myort,myjoint,sectionPropsArray,mass_twr, mass_bld,
-    stiff_twr, stiff_bld,RefArea,bld_precompinput,
+    FSI_twr, FSI_bld,RefArea,bld_precompinput,
     bld_precompoutput,plyprops_bld,numadIn_bld,lam_U_bld,lam_L_bld,
     twr_precompinput,twr_precompoutput,plyprops_twr,numadIn_twr,lam_U_twr,lam_L_twr,aeroForces,RefArea,
     mass_breakout_blds,mass_breakout_twr,bladeIdx,bladeElem,system,assembly,sections = OWENS.setupOWENShawt(VAWTAero,path;
@@ -88,7 +89,7 @@ mymesh,myel,myort,myjoint,sectionPropsArray,mass_twr, mass_bld,
     stack_layers_bld = nothing,
     Ht = 1e-6,
     ntelem = 10, #tower elements
-    nbelem = 19, #blade elements
+    nbelem = 18, #blade elements
     ncelem = 10,
     joint_type = 0,
     RPI=true,
@@ -112,6 +113,42 @@ mymesh,myel,myort,myjoint,sectionPropsArray,mass_twr, mass_bld,
     # bshapez_tip = zeros(nbelem_tip+1), #Blade shape, magnitude is relevant
     )
 
+
+PyPlot.figure()
+PyPlot.plot(mymesh.x,mymesh.y,"b-")
+ for myi = 1:length(mymesh.y)
+     PyPlot.text(mymesh.x[myi].+rand()/30,mymesh.y[myi].+rand()/30,"$myi",ha="center",va="center")
+     PyPlot.draw()
+     sleep(0.1)
+ end
+PyPlot.xlabel("x")
+PyPlot.ylabel("y")
+# PyPlot.axis("equal")
+
+# Insert Sectional Properties
+
+NREL5MWprops = DelimitedFiles.readdlm("$path/NRELOffshrBsline5MW_Blade_51.csv",',',Float64,skipstart=1)
+
+NREL5MW_r = NREL5MWprops[:,1]
+NREL5MW_BlFract = NREL5MWprops[:,2]
+NREL5MW_PitchAxis = NREL5MWprops[:,3]
+NREL5MW_StrcTwst = NREL5MWprops[:,4]
+NREL5MW_BMassDen = NREL5MWprops[:,5]
+NREL5MW_FlpStff = NREL5MWprops[:,6]
+NREL5MW_EdgStff = NREL5MWprops[:,7]
+
+for iel = 1:length(myel.props)
+    # myel.props[iel].ac
+    # myel.props[iel].twist
+    myel.props[iel].rhoA .= NREL5MW_BMassDen[10]
+    myel.props[iel].EIyy .= NREL5MW_FlpStff[10]
+    myel.props[iel].EIzz .= NREL5MW_EdgStff[10]
+    myel.props[iel].GJ .= NREL5MW_EdgStff[10]*5
+    myel.props[iel].EA .= NREL5MW_EdgStff[10]*5
+    # myel.props[iel].rhoIyy
+    # myel.props[iel].rhoIzz
+    # myel.props[iel].rhoJ
+end
 
     # PyPlot.figure()
     # PyPlot.scatter3D(mymesh.x,mymesh.y,mymesh.z,color=plot_cycle[1])
@@ -283,7 +320,7 @@ for (tidx, t) in enumerate(ts[1:end-1])
         hubPos      = [0,0,Ht]                      # m
         hubAngle    = [0,0,0]                       # rad
         rotvel = omega
-        hubVel = [0,0,0,rotvel,0,0]#zeros(6)
+        hubVel = [0,0,0,0.0,0,0]#zeros(6)
         hubAcc = zeros(6) #TODO: may eventually need this for MHK?
 
         OpenFASTWrappers.deformAD15([u_j],
@@ -335,11 +372,22 @@ library_ADside_direct = DelimitedFiles.readdlm("$adi_rootname_direct.out",skipst
 header_library_direct = DelimitedFiles.readdlm("$adi_rootname_direct.out",header=true,skipstart=6)[2]
 
 bladenum = 2
-node = "005"
-headerNames1 = ["RtAeroFxh","RtAeroFyh","RtAeroFzh","AB$(bladenum)N$(node)STVx","AB$(bladenum)N$(node)STVy","AB$(bladenum)N$(node)STVz","AB$(bladenum)N$(node)Vx","AB$(bladenum)N$(node)Vy","AB$(bladenum)N$(node)Alpha","AB$(bladenum)N$(node)Fx","AB$(bladenum)N$(node)Fy", "B$(bladenum)AeroFxi","B$(bladenum)AeroFyi"]
+nodeint = 5
+node = "00$nodeint"
+headerNames1 = ["RtAeroFxh","RtAeroFyh","RtAeroFzh","AB$(bladenum)N$(node)Fxi","AB$(bladenum)N$(node)Fyi","AB$(bladenum)N$(node)Fzi"]# ","AB$(bladenum)N$(node)STVx","AB$(bladenum)N$(node)STVy","AB$(bladenum)N$(node)STVz","AB$(bladenum)N$(node)Vx","AB$(bladenum)N$(node)Vy","AB$(bladenum)N$(node)Alpha","B$(bladenum)AeroFxi","B$(bladenum)AeroFyi"]
+
+# Extract the blade and node reaction force
+meshNodeidx_plt = Int(mymesh.structuralNodeNumbers[bladenum,nodeint])
+locallen = sqrt((mymesh.x[meshNodeidx_plt+1]-mymesh.x[meshNodeidx_plt])^2 + (mymesh.y[meshNodeidx_plt+1]-mymesh.y[meshNodeidx_plt])^2 + (mymesh.z[meshNodeidx_plt+1]-mymesh.z[meshNodeidx_plt])^2)
+
+strtspnidx = bladeIdx[bladenum,1]
+endspnidx = bladeIdx[bladenum,2]
+
+spanlen = sqrt((mymesh.x[endspnidx]-mymesh.x[strtspnidx])^2+(mymesh.y[endspnidx]-mymesh.y[strtspnidx])^2+(mymesh.z[endspnidx]-mymesh.z[strtspnidx])^2)
+
 
 plotdata1_standalone = zeros(length(headerNames1),length(standalone_AD[:,1]))
-# plotdata1_stiff = zeros(length(headerNames1),length(standalone_AD[:,1]))
+
 plotdata1_direct = zeros(length(headerNames1),length(standalone_AD[:,1]))
 time_library_direct = zeros(length(standalone_AD[:,1]))
 
@@ -363,15 +411,9 @@ end
 
 # Now get the mapped forces:
 fm_direct = zeros(6,length(ForceValHist[:,1]))
-Fxh_direct = zeros(length(ForceValHist[:,1]))
-Fyh_direct = zeros(length(ForceValHist[:,1]))
-Fzh_direct = zeros(length(ForceValHist[:,1]))
 
 for i_time = 1:length(ForceValHist[:,1])
     # Get values from the library, but at the owens loads side.
-    Fxh_direct[i_time] = sum(Fxhist[:,i_time])
-    Fyh_direct[i_time] = sum(Fyhist[:,i_time])
-    Fzh_direct[i_time] = sum(Fzhist[:,i_time])
     for idof = 1:6
         dof_end = maximum(bladeIdx[bladenum,:])*6-6+idof
         dof_start = minimum(bladeIdx[bladenum,:])*6-6+idof
@@ -381,14 +423,19 @@ end
 
 # DCM = OpenFASTWrappers.createGeneralTransformationMatrix(ang1,angle_axes)
 
-fx_directcall = fm_direct[1,:].*cos.(AziHist).-fm_direct[2,:].*sin.(AziHist)
-fy_directcall = fm_direct[1,:].*sin.(AziHist).+fm_direct[2,:].*cos.(AziHist)
+fy_directcall = Fyhist[strtspnidx+nodeint-1,:].*cos.(AziHist).-Fxhist[strtspnidx+nodeint-1,:].*sin.(AziHist)
+fz_directcall = Fyhist[strtspnidx+nodeint-1,:].*sin.(AziHist).+Fxhist[strtspnidx+nodeint-1,:].*cos.(AziHist)
+fx_directcall = Fzhist[strtspnidx+nodeint-1,:]
+strtspnidx2 = strtspnidx+nodeint-1
+endspnidx2 = strtspnidx2+1
+localspanlen = sqrt((mymesh.x[endspnidx2]-mymesh.x[strtspnidx2])^2+(mymesh.y[endspnidx2]-mymesh.y[strtspnidx2])^2+(mymesh.z[endspnidx2]-mymesh.z[strtspnidx2])^2)
+
 mx_directcall = fm_direct[4,:].*cos.(AziHist).-fm_direct[5,:].*sin.(AziHist)
 my_directcall = fm_direct[4,:].*sin.(AziHist).+fm_direct[5,:].*cos.(AziHist)
 
-totalFxh = [sum(Fxhist[:,itime]) for itime = 1:length(Fxhist[1,:])]
-totalFyh = [sum(Fyhist[:,itime]) for itime = 1:length(Fxhist[1,:])]
-totalFzh = [sum(Fzhist[:,itime]) for itime = 1:length(Fxhist[1,:])]
+totalFxh_direct = [sum(Fxhist[:,itime]) for itime = 1:length(Fxhist[1,:])]
+totalFyh_direct = [sum(Fyhist[:,itime]) for itime = 1:length(Fxhist[1,:])]
+totalFzh_direct = [sum(Fzhist[:,itime]) for itime = 1:length(Fxhist[1,:])]
 # Mxhist
 # Myhist
 # Mzhist
@@ -398,27 +445,30 @@ PyPlot.close("all")
 
 for (ihead,header_name) in enumerate(headerNames1)
 
-    PyPlot.figure()
+    PyPlot.figure(ihead)
     PyPlot.plot(standalone_AD[2:end-1,1],plotdata1_standalone[ihead,2:end-1],"k-",label="Standalone OLAF Output")
-    PyPlot.plot(time_library_direct[2:end-1].+dt,plotdata1_direct[ihead,1:end-2],color=plot_cycle[3],"+",label="Direct Library OLAF Side")
+    PyPlot.plot(time_library_direct[2:end-1].+dt,plotdata1_direct[ihead,1:end-2],color=plot_cycle[1],":",label="Direct Library OLAF Side")
     PyPlot.ylabel("$header_name")
     PyPlot.xlabel("Time (s)")
 
-    # if contains(header_name,"Fxg")
-    #     PyPlot.plot(ts[2:end],fx_directcall,color=plot_cycle[1],".",label="Direct Library OWENS Side")
-    # end
-    # if contains(header_name,"Fyg")
-    #     PyPlot.plot(ts[2:end],fy_directcall,color=plot_cycle[1],".",label="Direct Library OWENS Side")
-    # end
+    if contains(header_name,"Fxi")
+        PyPlot.plot(ts[2:end],fx_directcall/localspanlen,color=plot_cycle[1],"-",label="Direct Library OWENS Side")
+    end
+    if contains(header_name,"Fyi")
+        PyPlot.plot(ts[2:end],fy_directcall/localspanlen,color=plot_cycle[1],"-",label="Direct Library OWENS Side")
+    end
+    if contains(header_name,"Fzi")
+        PyPlot.plot(ts[2:end],fz_directcall/localspanlen,color=plot_cycle[1],"-",label="Direct Library OWENS Side")
+    end
 
     if contains(header_name,"Fxh")
-        PyPlot.plot(ts[2:end],totalFxh,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+        PyPlot.plot(ts[2:end],totalFzh_direct,color=plot_cycle[1],"-",label="Direct Library OWENS Side")
     end
     if contains(header_name,"Fyh")
-        PyPlot.plot(ts[2:end],totalFyh,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+        PyPlot.plot(ts[2:end],totalFyh_direct,color=plot_cycle[1],"-",label="Direct Library OWENS Side")
     end
     if contains(header_name,"Fzh")
-        PyPlot.plot(ts[2:end],totalFzh,color=plot_cycle[1],".",label="Direct Library OWENS Side")
+        PyPlot.plot(ts[2:end],totalFxh_direct,color=plot_cycle[1],"-",label="Direct Library OWENS Side")
     end
     
     PyPlot.legend()
@@ -426,10 +476,211 @@ for (ihead,header_name) in enumerate(headerNames1)
     PyPlot.savefig("$(path)/$header_name.pdf",transparent = true)
 end
 
-PyPlot.figure()
-# PyPlot.plot(standalone_AD[2:end-1,1],plotdata1_standalone[1,3:end],color=plot_cycle[1],"-")
-# PyPlot.plot(standalone_AD[2:end-1,1],fx_directcall[2:end-1],color=plot_cycle[2],"-")
-PyPlot.plot(standalone_AD[2:end-1,1],(plotdata1_standalone[1,3:end].-fx_directcall[2:end-1])./plotdata1_standalone[1,3:end].*100,color=plot_cycle[1],"-")
-PyPlot.ylabel("Percent Difference (%)")
-PyPlot.xlabel("Time (s)")
-PyPlot.legend()
+
+##########################################
+############## FSI Simulation ############
+##########################################
+mymesh.hubPos = [0,0,Ht] #TODO: make this more integrated or automatically set within
+OpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname_FSI,[shapeX],[shapeY],[B],[Ht],[mymesh],[myort],[bladeIdx],[bladeElem];
+        rho     = rho,
+        adi_dt  = dt,
+        adi_nstrut  = 0,
+        adi_tmax= t_max,
+        omega   = [omega],
+        adi_wrOuts = 1,     # write output file [0 none, 1 txt, 2 binary, 3 both]
+        adi_DT_Outs = dt,    # output frequency
+        hubAngle = [[0.0,0.0,0.0]], #deg
+        hubPos      = [[0,0,Ht]],
+        nacAngle = [[0.0,0.0,0.0]], #deg
+        nacPos      = [[0,0,Ht]],  
+        refPos = [[0,0.0,0.0]],
+        isHAWT = true
+        )
+
+# Routine for getting aero forces from aD15
+aeroForcesAD15(t,azi) = OWENS.mapAD15(t,azi,[mymesh],OpenFASTWrappers.advanceAD15;alwaysrecalc=true,verbosity=1)
+
+model = OWENS.Inputs(;analysisType = "TNB",
+    tocp = [0.0,100000.1],
+    Omegaocp = [RPM,RPM] ./ 60,
+    turbineStartup = 0,
+    generatorOn = false,
+    useGeneratorFunction = false,
+    numTS = numTS,
+    delta_t = dt,
+    aeroLoadsOn = 2.0,        # 1: one way; 1.5: aero once in iteration in 2 way; 2: two-way
+    topsideOn = true,
+    interpOrder = 2,
+    AD15On=true)
+    model.iteration_parameters.MAXITER=20   # temporary for testing
+
+pBC = [ 1 1 0
+1 2 0
+1 3 0
+1 4 0
+1 5 0
+1 6 0]
+
+feamodel = OWENS.FEAModel(;analysisType = "TNB",
+    outFilename = "none",
+    joint = myjoint,
+    platformTurbineConnectionNodeNumber = 1,
+    pBC,
+    nlOn = false,
+    gravityOn = false, # for HAWT, gravity would be in the +x direction in the OWENS FOR
+    numNodes = mymesh.numNodes,
+    RayleighAlpha = 500.05,
+    RayleighBeta = 500.05,
+    iterationType = "DI")
+
+println("Running Unsteady")
+t_FSI, aziHist_FSI,OmegaHist_FSI,OmegaDotHist_FSI,gbHist_FSI,gbDotHist_FSI,gbDotDotHist_FSI,
+ForceValHist_FSI,FTwrBsHist_FSI,genTorque_FSI,genPower_FSI,torqueDriveShaft_FSI,uHist_FSI,
+uHist_prp_FSI,epsilon_x_hist_FSI,epsilon_y_hist_FSI,epsilon_z_hist_FSI,kappa_x_hist_FSI,
+kappa_y_hist_FSI,kappa_z_hist_FSI,FPtfmHist_FSI,FHydroHist_FSI,FMooringHist_FSI,
+topFexternal_hist_FSI,rbDataHist_FSI = OWENS.Unsteady_Land(model;topModel=feamodel,topMesh=mymesh,topEl=myel,aero=aeroForcesAD15,
+deformAero=OpenFASTWrappers.deformAD15,system=system,assembly=assembly) #,meshcontrolfunction=mymeshcontrolfunction2,userDefinedGenerator=userDefinedGenerator,
+
+println("Saving VTK time domain files")
+OWENS.gyricFEA_VTK("$path/vtk/fsi1",t_FSI,uHist_FSI,system,assembly,sections;scaling=1,azi=aziHist_FSI)
+
+
+println("End Aerodynamics")
+OpenFASTWrappers.endTurb()
+
+######################################
+#### Plot Comparison
+#######################################
+
+# Load Standalone Data
+standalone_AD = DelimitedFiles.readdlm("$path/HAWT_standalone_test.out",skipstart=8)
+header_standalone = DelimitedFiles.readdlm("$path/HAWT_standalone_test.out",header=true,skipstart=6)[2]
+
+# Compare with Current Data on the AeroDyn Side
+library_ADside_direct = DelimitedFiles.readdlm("$adi_rootname_direct.out",skipstart=8)
+header_library_direct = DelimitedFiles.readdlm("$adi_rootname_direct.out",header=true,skipstart=6)[2]
+
+# Compare with FSI Data on the AeroDyn Side
+library_ADside_FSI = DelimitedFiles.readdlm("$adi_rootname_FSI.out",skipstart=8)
+header_library_FSI = DelimitedFiles.readdlm("$adi_rootname_FSI.out",header=true,skipstart=6)[2]
+
+
+# Extract the blade and node reaction force
+meshNodeidx_plt = Int(mymesh.structuralNodeNumbers[bladenum,nodeint])
+locallen = sqrt((mymesh.x[meshNodeidx_plt+1]-mymesh.x[meshNodeidx_plt])^2 + (mymesh.y[meshNodeidx_plt+1]-mymesh.y[meshNodeidx_plt])^2 + (mymesh.z[meshNodeidx_plt+1]-mymesh.z[meshNodeidx_plt])^2)
+
+plotdata1_standalone = zeros(length(headerNames1),length(standalone_AD[:,1]))
+
+plotdata1_direct = zeros(length(headerNames1),length(standalone_AD[:,1]))
+time_library_direct = zeros(length(standalone_AD[:,1]))
+
+plotdata1_FSI = zeros(length(headerNames1),length(standalone_AD[:,1]))
+time_library_FSI = zeros(length(standalone_AD[:,1]))
+
+
+# Since we did correction stepping with the library, we need to filter out each unique timestep, preferrably the aeroDistLoadsArrayTime
+for (idx_t_standalone, time) in enumerate(standalone_AD[1:end-1,1])
+
+    idx_t_direct = findlast(x->x==time,library_ADside_direct[:,1])
+    time_library_direct[idx_t_standalone] = library_ADside_direct[idx_t_direct,1]
+
+    idx_t_FSI = findlast(x->x==time,library_ADside_FSI[:,1])
+    time_library_FSI[idx_t_standalone] = library_ADside_FSI[idx_t_FSI,1]
+
+    for (ihead,header_name) in enumerate(headerNames1)
+        header_idx_standalone = findfirst(x->x==header_name,header_standalone)
+        
+        header_idx_library = findfirst(x->x==headerNames1[ihead],header_library_direct)
+
+        header_idx_FSI = findfirst(x->x==headerNames1[ihead],header_library_FSI)
+        
+        # println("$header_name $header_idx_standalone $header_idx_library")
+        plotdata1_standalone[ihead,idx_t_standalone] = standalone_AD[idx_t_standalone,header_idx_standalone[2]]
+        plotdata1_direct[ihead,idx_t_standalone] = library_ADside_direct[idx_t_direct,header_idx_library[2]]
+        plotdata1_FSI[ihead,idx_t_standalone] = library_ADside_FSI[idx_t_FSI,header_idx_library[2]]
+    end
+end
+
+
+# # Now get the mapped forces:
+# fm_FSI = zeros(6,length(ForceValHist_FSI[:,1]))
+
+# for i_time = 1:length(ForceValHist_FSI[:,1])
+#     for idof = 1:6
+#         dof_end = maximum(bladeIdx[bladenum,:])*6-6+idof
+#         dof_start = minimum(bladeIdx[bladenum,:])*6-6+idof
+#         # fm_FSI[idof,i_time] = sum(ForceValHist_FSI[i_time,dof_start:6:dof_end])
+#     end
+# end
+
+
+# totalFxh_FSI = [sum(ForceValHist_FSI[itime,1:6:end]) for itime = 1:length(ForceValHist_FSI[:,1])]
+# totalFyh_FSI = [sum(ForceValHist_FSI[itime,2:6:end]) for itime = 1:length(ForceValHist_FSI[:,1])]
+# totalFzh_FSI = [sum(ForceValHist_FSI[itime,3:6:end]) for itime = 1:length(ForceValHist_FSI[:,1])]
+# Mxhist
+# Myhist
+# Mzhist
+
+# fx_FSIcall = fm_FSI[1,:].*cos.(aziHist_FSI).-fm_FSI[2,:].*sin.(aziHist_FSI)
+# fy_FSIcall = fm_FSI[1,:].*sin.(aziHist_FSI).+fm_FSI[2,:].*cos.(aziHist_FSI)
+# fz_FSIcall = fm_FSI[3,:]
+# mx_FSIcall = fm_FSI[4,:].*cos.(aziHist_FSI).-fm_FSI[5,:].*sin.(aziHist_FSI)
+# my_FSIcall = fm_FSI[4,:].*sin.(aziHist_FSI).+fm_FSI[5,:].*cos.(aziHist_FSI)
+
+# fxi_node_FSI = (ForceValHist_FSI[:,(meshNodeidx_plt)*6-6+1]./locallen).*cos.(AziHist) .- (ForceValHist_FSI[:,(meshNodeidx_plt)*6-6+2]./locallen).*sin.(AziHist)
+# fyi_node_FSI = (ForceValHist_FSI[:,(meshNodeidx_plt)*6-6+1]./locallen).*sin.(AziHist) .+ (ForceValHist_FSI[:,(meshNodeidx_plt)*6-6+2]./locallen).*cos.(AziHist)
+# fzi_node_FSI = (ForceValHist_FSI[:,(meshNodeidx_plt)*6-6+3]./locallen)
+
+Fxhist = ForceValHist_FSI[:,1:6:end]
+Fyhist = ForceValHist_FSI[:,2:6:end]
+Fzhist = ForceValHist_FSI[:,3:6:end]
+
+fy_directcall = Fyhist[strtspnidx+nodeint-1,:].*cos.(AziHist).-Fxhist[strtspnidx+nodeint-1,:].*sin.(AziHist)
+fz_directcall = Fyhist[strtspnidx+nodeint-1,:].*sin.(AziHist).+Fxhist[strtspnidx+nodeint-1,:].*cos.(AziHist)
+fx_directcall = Fzhist[strtspnidx+nodeint-1,:]
+
+for (ihead,header_name) in enumerate(headerNames1)
+
+    PyPlot.figure(ihead)
+    PyPlot.plot(time_library_FSI[2:end-1].+dt,plotdata1_FSI[ihead,1:end-2],color=plot_cycle[2],":",label="Stiff OLAF Side")
+    PyPlot.ylabel("$header_name")
+    PyPlot.xlabel("Time (s)")
+
+    if bladenum>3
+        plotname="Strut"
+        localbladenum = bladenum-B
+    else
+        plotname="Blade"
+        localbladenum = bladenum
+    end
+
+    if contains(header_name,"Fxi")
+        PyPlot.plot(ts[2:end],fx_FSIcall./spanlen,color=plot_cycle[2],"-",label="FSI OWENS Side")
+        PyPlot.ylabel("$plotname $localbladenum Node $nodeint Global X Force (N)")
+    end
+    if contains(header_name,"Fyi")
+        PyPlot.plot(ts[2:end],fy_FSIcall./spanlen,color=plot_cycle[2],"-",label="FSI OWENS Side")
+        PyPlot.ylabel("$plotname $localbladenum Node $nodeint Global Y Force (N)")
+    end
+    if contains(header_name,"Fzi")
+        PyPlot.plot(ts[2:end],fz_FSIcall./spanlen,color=plot_cycle[2],"-",label="FSI OWENS Side")
+        PyPlot.ylabel("$plotname $localbladenum Node $nodeint Global Z Force (N)")
+    end
+
+    if contains(header_name,"Fxh")
+        PyPlot.plot(ts[3:end],ForceValHist_FSI[3,2:end],color=plot_cycle[2],"-",label="Stiff OWENS Side")
+        PyPlot.ylabel("Hub X (Windward) Force (N)")
+    end
+    if contains(header_name,"Fyh")
+        PyPlot.plot(ts[3:end],ForceValHist_FSI[2,2:end],color=plot_cycle[2],"-",label="Stiff OWENS Side")
+        PyPlot.ylabel("Hub Y (Crosswind at t=0) Force (N)")
+    end
+    if contains(header_name,"Fzh")
+        PyPlot.plot(ts[3:end],-ForceValHist_FSI[1,2:end],color=plot_cycle[2],"-",label="Stiff OWENS Side")
+        PyPlot.ylabel("Hub Z (Vertical at t=0) Force (N)")
+    end
+    
+    PyPlot.legend()
+    # PyPlot.xlim([0.4,0.5])
+    PyPlot.savefig("$(path)/$header_name.pdf",transparent = true)
+end
