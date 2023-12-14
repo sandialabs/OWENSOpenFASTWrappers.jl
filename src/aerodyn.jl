@@ -2041,15 +2041,10 @@ GridName	DTOut         - XStart XEnd nX YStart YEnd nY ZStart ZEnd nZ
     return input_string_array
 end
 
-function writeIWfile(Vinf,filename = "./AD15-input/IW_test.dat";turbsim_filename=nothing)
+function writeIWfile(Vinf,filename = "./AD15-input/IW_test.dat";WindType=1,windINPfilename=nothing)
     HWindSpeed_str = "$(round(Vinf,digits=6))   HWindSpeed     - Horizontal windspeed                            (m/s)"
-    turbsim_str = "\"$turbsim_filename\"      filename_bts   - name of the full field wind file to use (.bts)"
-
-    if turbsim_filename!==nothing
-        WindType = 3
-    else
-        WindType = 1
-    end
+    turbsim_str = "\"$windINPfilename\"      filename_bts   - name of the full field wind file to use (.bts)"
+    uniformWind_str = "\"$windINPfilename\"      FileName_Uni   - Filename of time series data for uniform wind field.      (-)"
 
     input_string_array = 
 "------- InflowWind INPUT FILE -------------------------------------------------------------------------
@@ -2069,7 +2064,7 @@ False         Echo           - Echo input data to <RootName>.ech (flag)
             50   RefHt          - Reference height for horizontal wind speed      (m)
             0   PLExp          - Power law exponent                              (-)
 ================== Parameters for Uniform wind file   [used only for WindType = 2] ============================
-\"Elliptic_Wind.wnd\"    FileName_Uni   - Filename of time series data for uniform wind field.      (-)
+    $uniformWind_str    FileName_Uni   - Filename of time series data for uniform wind field.      (-)
         100   RefHt_Uni      - Reference height for horizontal wind speed                (m)
         125.88   RefLength      - Reference length for linear horizontal and vertical sheer (-)
 ================== Parameters for Binary TurbSim Full-Field files   [used only for WindType = 3] ==============

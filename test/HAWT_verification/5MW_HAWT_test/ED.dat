@@ -12,10 +12,10 @@ False         TeetDOF     - Rotor-teeter DOF (flag) [unused for 3 blades]
 False         DrTrDOF     - Drivetrain rotational-flexibility DOF (flag)
 False         GenDOF      - Generator DOF (flag)
 False         YawDOF      - Yaw DOF (flag)
-True          TwFADOF1    - First fore-aft tower bending-mode DOF (flag)
-True          TwFADOF2    - Second fore-aft tower bending-mode DOF (flag)
-True          TwSSDOF1    - First side-to-side tower bending-mode DOF (flag)
-True          TwSSDOF2    - Second side-to-side tower bending-mode DOF (flag)
+False          TwFADOF1    - First fore-aft tower bending-mode DOF (flag)
+False          TwFADOF2    - Second fore-aft tower bending-mode DOF (flag)
+False          TwSSDOF1    - First side-to-side tower bending-mode DOF (flag)
+False          TwSSDOF2    - Second side-to-side tower bending-mode DOF (flag)
 False         PtfmSgDOF   - Platform horizontal surge translation DOF (flag)
 False         PtfmSwDOF   - Platform horizontal sway translation DOF (flag)
 False         PtfmHvDOF   - Platform vertical heave translation DOF (flag)
@@ -83,9 +83,9 @@ False         PtfmYDOF    - Platform yaw rotation DOF (flag)
           0   PtfmYIner   - Platform inertia for yaw rotation about the platform CM (kg m^2)
 ---------------------- BLADE ---------------------------------------------------
          17   BldNodes    - Number of blade nodes (per blade) used for analysis (-)
-"../5MW_Baseline/NRELOffshrBsline5MW_Blade.dat"    BldFile(1)  - Name of file containing properties for blade 1 (quoted string)
-"../5MW_Baseline/NRELOffshrBsline5MW_Blade.dat"    BldFile(2)  - Name of file containing properties for blade 2 (quoted string)
-"../5MW_Baseline/NRELOffshrBsline5MW_Blade.dat"    BldFile(3)  - Name of file containing properties for blade 3 (quoted string) [unused for 2 blades]
+"NRELOffshrBsline5MW_Blade.dat"    BldFile(1)  - Name of file containing properties for blade 1 (quoted string)
+"NRELOffshrBsline5MW_Blade.dat"    BldFile(2)  - Name of file containing properties for blade 2 (quoted string)
+"NRELOffshrBsline5MW_Blade.dat"    BldFile(3)  - Name of file containing properties for blade 3 (quoted string) [unused for 2 blades]
 ---------------------- ROTOR-TEETER --------------------------------------------
           0   TeetMod     - Rotor-teeter spring/damper model {0: none, 1: standard, 2: user-defined from routine UserTeet} (switch) [unused for 3 blades]
           0   TeetDmpP    - Rotor-teeter damper position (degrees) [used only for 2 blades and when TeetMod=1]
