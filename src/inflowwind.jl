@@ -27,6 +27,13 @@ function ifwinit(;inflowlib_filename="$path/../deps/bin/libifw_c_binding",HWindS
     # Where the input is manipulated
     HWindSpeed_str = "       $(round(HWindSpeed,digits=1))   HWindSpeed     - Horizontal windspeed                            (m/s)"
     turbsim_str = "\"$turbsim_filename\"      filename_bts   - name of the full field wind file to use (.bts)"
+    uniformWind_str = "\"$turbsim_filename\"      FileName_Uni   - Filename of time series data for uniform wind field.      (-)"
+
+    if turbsim_filename[end-3:end] == "bts"
+        WindType = 3
+    else
+        WindType = 2
+    end
 
     #\x00------ InflowWind v3.01.* INPUT FILE -------------------------------------------------------------------------
     input_string_array = [
@@ -34,7 +41,7 @@ function ifwinit(;inflowlib_filename="$path/../deps/bin/libifw_c_binding",HWindS
         "Steady 15 m/s winds with no shear for IEA 15 MW Offshore Reference Turbine",
         "--------------------------------------------------------------------------------------------------------------",
             "false  Echo           - Echo input data to <RootName>.ech (flag)",
-                "3   WindType       - switch for wind file type (1=steady; 2=uniform; 3=binary TurbSim FF; 4=binary Bladed-style FF; 5=HAWC format; 6=User defined; 7=native Bladed FF)",
+                "$WindType   WindType       - switch for wind file type (1=steady; 2=uniform; 3=binary TurbSim FF; 4=binary Bladed-style FF; 5=HAWC format; 6=User defined; 7=native Bladed FF)",
                 "0   PropagationDir - Direction of wind propagation (meteoroligical rotation from aligned with X (positive rotates towards -Y) -- degrees)",
                 "0   VFlowAng       - Upflow angle (degrees) (not used for native Bladed format WindType=7)",
             "False   VelInterpCubic - Use cubic interpolation for velocity in time (false=linear, true=cubic) [Used with WindType=2,3,4,5,7]",
