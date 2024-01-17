@@ -54,7 +54,7 @@ function ifwinit(;inflowlib_filename="$path/../deps/bin/libifw_c_binding",HWindS
                 "150   RefHt          - Reference height for horizontal wind speed      (m)",
                 "0.0   PLexp          - Power law exponent                              (-)",
         "================== Parameters for Uniform wind file   [used only for WindType = 2] ============================",
-        "\"unused\"      FileName_Uni   - Filename of time series data for uniform wind field.      (-)",
+   "$uniformWind_str    FileName_Uni   - Filename of time series data for uniform wind field.      (-)",
                 "150   RefHt_Uni      - Reference height for horizontal wind speed                (m)",
             "125.88   RefLength      - Reference length for linear horizontal and vertical sheer (-)",
         "================== Parameters for Binary TurbSim Full-Field files   [used only for WindType = 3] ==============",
