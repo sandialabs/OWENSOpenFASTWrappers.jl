@@ -29,7 +29,7 @@ function ifwinit(;inflowlib_filename="$path/../deps/bin/libifw_c_binding",HWindS
     turbsim_str = "\"$turbsim_filename\"      filename_bts   - name of the full field wind file to use (.bts)"
     uniformWind_str = "\"$turbsim_filename\"      FileName_Uni   - Filename of time series data for uniform wind field.      (-)"
 
-    if turbsim_filename[end-3:end] == "bts"
+    if turbsim_filename[end-3:end] == ".bts"
         WindType = 3
     else
         WindType = 2
@@ -116,14 +116,33 @@ function ifwinit(;inflowlib_filename="$path/../deps/bin/libifw_c_binding",HWindS
     # could be an arbitrary number of lines long
     # NOTE: that there is an issue when passing in a binary coded string to fortran that an extra line/character is prepended, so we have to removed the first line to compensate
     # ! OpenFAST InflowWind uniform wind input file for 15 m/s wind.\x00
-    uniform_string_array = [
-        "! Time Wind  Wind  Vert. Horiz. Vert. LinV  Gust   Upflow",
-        "!      Speed Dir   Speed Shear  Shear Shear Speed  Angle",
-        "! (sec) (m/s) (deg) (m/s) (-)    (-)   (-)  (m/s)  (deg)",
-        "0.0  15.0  0.0   0.0   5.0    0.0   0.0   0.0    0.0",
-        "0.1  15.0  0.0   0.0   0.0    0.0   0.0   0.0    0.0",
-        "1.0  15.0  0.0   0.0   0.0    0.0   0.0   0.0    0.0",
-    ]
+
+    if WindType == 2
+        lines = open(turbsim_filename) do fid   #open mesh file
+            readlines(fid)
+        end
+        
+        linestart = 1
+        for iline = 1:length(lines)
+            if lines[iline][1]=='!' && iline !=1
+                linestart = iline
+                break
+            end
+        end
+        
+        uniform_string_array = lines[linestart:end]
+        
+    else
+
+        uniform_string_array = [
+            "! Time Wind  Wind  Vert. Horiz. Vert. LinV  Gust   Upflow",
+            "!      Speed Dir   Speed Shear  Shear Shear Speed  Angle",
+            "! (sec) (m/s) (deg) (m/s) (-)    (-)   (-)  (m/s)  (deg)",
+            "0.0  15.0  0.0   0.0   5.0    0.0   0.0   0.0    0.0",
+            "0.1  15.0  0.0   0.0   0.0    0.0   0.0   0.0    0.0",
+            "1.0  15.0  0.0   0.0   0.0    0.0   0.0   0.0    0.0",
+        ]
+    end
 
     numWindPts = [1] #[Int(length(positions)/3)]     # total number of wind points requesting velocities for at each time step. must be integer
 
