@@ -5,5 +5,7 @@
 *.sum
 *.vtk
 *.vtp
+*.vtu
+*.pdf
 *.ech
 *.vscode

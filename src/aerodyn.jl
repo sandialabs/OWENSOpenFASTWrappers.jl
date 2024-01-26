@@ -157,8 +157,8 @@ Sets the motions for a single turbine rotor
 
 * `HubPos::Array(float)`: required, (x,y,z) position of hub
 * `HubOrient::Array(float)`: required, orientation of hub as 9 element vector of flattened DCM
-* `HubVel::Array(float)`: required, (TVx,TVy,TVz,RVx,RVy,RVz) velocity of hub
-* `HubAcc::Array(float)`: required, (TAx,TAy,TAz,RAx,RAy,RAz) acceleration of hub
+* `HubVel::Array(float)`: required, (TVx,TVy,TVz,RVx,RVy,RVz) velocity of hub, does not include rotational velocity, so this is extra like from a platform
+* `HubAcc::Array(float)`: required, (TAx,TAy,TAz,RAx,RAy,RAz) acceleration of hub, does not include rotational accel, so this is extra like from a platform
 
 * `NacPos::Array(float)`: required, (x,y,z) position of nacelle
 * `NacOrient::Array(float)`: required, orientation of nacelle as 9 element vector of flattened DCM
@@ -861,7 +861,6 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
         meshVel,meshAcc = getAD15MeshVelAcc(turbine[iturb],meshPos,udot_j,uddot_j,azi,omega[iturb],zero(omega[iturb]),nacPosTmp,hubPosTmp,hubAngle[iturb],hubVel,hubAcc)   # get mesh vel/acc of all AD15 blades   (blades + struts in OWENS)
 
         # hub
-        #FIXME: this is not complete.  The hubVel is probably not correctly set.
         CG2H = calcHubRotMat(hubAngle[iturb], azi;rot_axis = 1) 
    
         if !turbine[iturb].isHAWT
@@ -990,8 +989,8 @@ Sets the inputs for AD15.
 * `OmegaDot_rad`:   angular acceleration of hub about hub axis (rad/s^2)
 * `hubPos`:         current global hubPos (x,y,z) vector (m)
 * `hubAngle`:       3 angle set for hub orientation (rad), no rotation from spinning
-* `hubVel`:         hub velocity in global coords, 6-vector (m/s,rad/s)
-* `hubAcc`:         hub acceleration in global coords, 6-vector (m/s^2,rad/s^2)
+* `hubVel`:         hub velocity in global coords, 6-vector (m/s,rad/s), does not include rotational velocity, so this is extra like from a platform
+* `hubAcc`:         hub acceleration in global coords, 6-vector (m/s^2,rad/s^2), does not include rotational accel, so this is extra like from a platform
 """
 function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngle,hubVel,hubAcc)
 
@@ -1001,6 +1000,14 @@ function deformAD15(u_j,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,hubPos,hubAngl
     
     numTurbines = length(turbine)
     for iturb = 1:numTurbines
+        if turbine[iturb].isHAWT #Add in the rotational components here 
+            hubVel[iturb][4] = Omega_rad[iturb]
+            hubAcc[iturb][4] = OmegaDot_rad[iturb]
+        else
+            hubVel[iturb][6] = Omega_rad[iturb]
+            hubAcc[iturb][6] = OmegaDot_rad[iturb]
+        end
+
         nacPos = turbstruct[iturb].nacPos #TODO: nacelle position deformation
         # Root
         turbstruct[iturb].rootPos                    = getRootPos(turbine[iturb],u_j[iturb],azi[iturb],nacPos,hubPos[iturb],hubAngle[iturb])                                                                         # get root positions of all AD15 blades (blades + struts in OWENS)
@@ -1136,12 +1143,21 @@ function advanceAD15(t_new,mesh,azi;dt=turbenv.dt)
             for iNode=1:mesh[iturb].numNodes
                 FMg = [Fx[iturb][iNode] Fy[iturb][iNode] Fz[iturb][iNode] Mx[iturb][iNode] My[iturb][iNode] Mz[iturb][iNode]]
                 FM = frame_convert(FMg, CG2H)
-                Fx[iturb][iNode,istep] = FM[1]
-                Fy[iturb][iNode,istep] = FM[2]
-                Fz[iturb][iNode,istep] = FM[3]
-                Mx[iturb][iNode,istep] = FM[4]
-                My[iturb][iNode,istep] = FM[5]
-                Mz[iturb][iNode,istep] = FM[6]
+                if turbine[iturb].isHAWT #TODO incorporate into the CG2H matrix
+                    Fx[iturb][iNode,istep] = FM[3]
+                    Fy[iturb][iNode,istep] = FM[2]
+                    Fz[iturb][iNode,istep] = FM[1]
+                    Mx[iturb][iNode,istep] = FM[6]
+                    My[iturb][iNode,istep] = FM[5]
+                    Mz[iturb][iNode,istep] = FM[4]
+                else
+                    Fx[iturb][iNode,istep] = FM[1]
+                    Fy[iturb][iNode,istep] = FM[2]
+                    Fz[iturb][iNode,istep] = FM[3]
+                    Mx[iturb][iNode,istep] = FM[4]
+                    My[iturb][iNode,istep] = FM[5]
+                    Mz[iturb][iNode,istep] = FM[6]
+                end
             end
         end
     end
@@ -1217,8 +1233,8 @@ Extract the root velocities and accelerations for all ADI blades
 * `nacPos`:         current global nacPos (x,y,z) vector (m)
 * `hubPos`:         current global hubPos (x,y,z) vector (m)
 * `hubAngle`:       3 angle set for hub orientation (rad) , no rotation from spinning
-* `hubVel`:         hub velocity in global coords, 6-vector (m/s,rad/s)
-* `hubAcc`:         hub acceleration in global coords, 6-vector (m/s^2,rad/s^2)
+* `hubVel`:         hub velocity in global coords, 6-vector (m/s,rad/s), does not include rotational velocity, so this is extra like from a platform
+* `hubAcc`:         hub acceleration in global coords, 6-vector (m/s^2,rad/s^2), does not include rotational accel, so this is extra like from a platform
 """
 function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,nacPos,hubPos,hubAngle,hubVel,hubAcc)
     RootVel     = zeros(Float32,6,turbine.adi_numbl)
@@ -1352,8 +1368,8 @@ Extract the mesh velocities and accelerations for all the AD15 blades
 * `hubPos`:         current global hubPos (x,y,z) vector (m)
 * `nacPos`:         current global nacPos (x,y,z) vector (m)
 * `hubAngle`:       3 angle set for hub orientation (rad), no rotation from spinning
-* `hubVel`:         hub velocity in global coords (m/s,rad/s)
-* `hubAcc`:         hub acceleration in global coords (m/s^2,rad/s^2)
+* `hubVel`:         hub velocity in global coords (m/s,rad/s), does not include rotational velocity, so this is extra like from a platform
+* `hubAcc`:         hub acceleration in global coords (m/s^2,rad/s^2), does not include rotational accel, so this is extra like from a platform
 """
 function getAD15MeshVelAcc(turbine,meshPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad,nacPos,hubPos,hubAngle,hubVel,hubAcc)
     #display(turbine.bladeIdx)
@@ -2025,15 +2041,10 @@ GridName	DTOut         - XStart XEnd nX YStart YEnd nY ZStart ZEnd nZ
     return input_string_array
 end
 
-function writeIWfile(Vinf,filename = "./AD15-input/IW_test.dat";turbsim_filename=nothing)
+function writeIWfile(Vinf,filename = "./AD15-input/IW_test.dat";WindType=1,windINPfilename=nothing)
     HWindSpeed_str = "$(round(Vinf,digits=6))   HWindSpeed     - Horizontal windspeed                            (m/s)"
-    turbsim_str = "\"$turbsim_filename\"      filename_bts   - name of the full field wind file to use (.bts)"
-
-    if turbsim_filename!==nothing
-        WindType = 3
-    else
-        WindType = 1
-    end
+    turbsim_str = "\"$windINPfilename\"      filename_bts   - name of the full field wind file to use (.bts)"
+    uniformWind_str = "\"$windINPfilename\"      FileName_Uni   - Filename of time series data for uniform wind field.      (-)"
 
     input_string_array = 
 "------- InflowWind INPUT FILE -------------------------------------------------------------------------
@@ -2053,7 +2064,7 @@ False         Echo           - Echo input data to <RootName>.ech (flag)
             50   RefHt          - Reference height for horizontal wind speed      (m)
             0   PLExp          - Power law exponent                              (-)
 ================== Parameters for Uniform wind file   [used only for WindType = 2] ============================
-\"Elliptic_Wind.wnd\"    FileName_Uni   - Filename of time series data for uniform wind field.      (-)
+    $uniformWind_str    FileName_Uni   - Filename of time series data for uniform wind field.      (-)
         100   RefHt_Uni      - Reference height for horizontal wind speed                (m)
         125.88   RefLength      - Reference length for linear horizontal and vertical sheer (-)
 ================== Parameters for Binary TurbSim Full-Field files   [used only for WindType = 3] ==============

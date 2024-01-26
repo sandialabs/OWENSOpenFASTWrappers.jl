@@ -27,6 +27,13 @@ function ifwinit(;inflowlib_filename="$path/../deps/bin/libifw_c_binding",HWindS
     # Where the input is manipulated
     HWindSpeed_str = "       $(round(HWindSpeed,digits=1))   HWindSpeed     - Horizontal windspeed                            (m/s)"
     turbsim_str = "\"$turbsim_filename\"      filename_bts   - name of the full field wind file to use (.bts)"
+    uniformWind_str = "\"$turbsim_filename\"      FileName_Uni   - Filename of time series data for uniform wind field.      (-)"
+
+    if turbsim_filename[end-3:end] == ".bts"
+        WindType = 3
+    else
+        WindType = 2
+    end
 
     #\x00------ InflowWind v3.01.* INPUT FILE -------------------------------------------------------------------------
     input_string_array = [
@@ -34,7 +41,7 @@ function ifwinit(;inflowlib_filename="$path/../deps/bin/libifw_c_binding",HWindS
         "Steady 15 m/s winds with no shear for IEA 15 MW Offshore Reference Turbine",
         "--------------------------------------------------------------------------------------------------------------",
             "false  Echo           - Echo input data to <RootName>.ech (flag)",
-                "3   WindType       - switch for wind file type (1=steady; 2=uniform; 3=binary TurbSim FF; 4=binary Bladed-style FF; 5=HAWC format; 6=User defined; 7=native Bladed FF)",
+                "$WindType   WindType       - switch for wind file type (1=steady; 2=uniform; 3=binary TurbSim FF; 4=binary Bladed-style FF; 5=HAWC format; 6=User defined; 7=native Bladed FF)",
                 "0   PropagationDir - Direction of wind propagation (meteoroligical rotation from aligned with X (positive rotates towards -Y) -- degrees)",
                 "0   VFlowAng       - Upflow angle (degrees) (not used for native Bladed format WindType=7)",
             "False   VelInterpCubic - Use cubic interpolation for velocity in time (false=linear, true=cubic) [Used with WindType=2,3,4,5,7]",
@@ -47,9 +54,9 @@ function ifwinit(;inflowlib_filename="$path/../deps/bin/libifw_c_binding",HWindS
                 "150   RefHt          - Reference height for horizontal wind speed      (m)",
                 "0.0   PLexp          - Power law exponent                              (-)",
         "================== Parameters for Uniform wind file   [used only for WindType = 2] ============================",
-        "\"unused\"      FileName_Uni   - Filename of time series data for uniform wind field.      (-)",
-                "150   RefHt_Uni      - Reference height for horizontal wind speed                (m)",
-            "125.88   RefLength      - Reference length for linear horizontal and vertical sheer (-)",
+   "$uniformWind_str    FileName_Uni   - Filename of time series data for uniform wind field.      (-)",
+                "15   RefHt_Uni      - Reference height for horizontal wind speed                (m)",
+            "10   RefLength      - Reference length for linear horizontal and vertical sheer (-)",
         "================== Parameters for Binary TurbSim Full-Field files   [used only for WindType = 3] ==============",
         "$turbsim_str",
         "================== Parameters for Binary Bladed-style Full-Field files   [used only for WindType = 4] =========",
@@ -109,14 +116,33 @@ function ifwinit(;inflowlib_filename="$path/../deps/bin/libifw_c_binding",HWindS
     # could be an arbitrary number of lines long
     # NOTE: that there is an issue when passing in a binary coded string to fortran that an extra line/character is prepended, so we have to removed the first line to compensate
     # ! OpenFAST InflowWind uniform wind input file for 15 m/s wind.\x00
-    uniform_string_array = [
-        "! Time Wind  Wind  Vert. Horiz. Vert. LinV  Gust   Upflow",
-        "!      Speed Dir   Speed Shear  Shear Shear Speed  Angle",
-        "! (sec) (m/s) (deg) (m/s) (-)    (-)   (-)  (m/s)  (deg)",
-        "0.0  15.0  0.0   0.0   5.0    0.0   0.0   0.0    0.0",
-        "0.1  15.0  0.0   0.0   0.0    0.0   0.0   0.0    0.0",
-        "1.0  15.0  0.0   0.0   0.0    0.0   0.0   0.0    0.0",
-    ]
+
+    if WindType == 2
+        lines = open(turbsim_filename) do fid   #open mesh file
+            readlines(fid)
+        end
+        
+        linestart = 1
+        for iline = 1:length(lines)
+            if lines[iline][1]=='!' && iline !=1
+                linestart = iline
+                break
+            end
+        end
+        
+        uniform_string_array = lines[linestart:end]
+        
+    else
+
+        uniform_string_array = [
+            "! Time Wind  Wind  Vert. Horiz. Vert. LinV  Gust   Upflow",
+            "!      Speed Dir   Speed Shear  Shear Shear Speed  Angle",
+            "! (sec) (m/s) (deg) (m/s) (-)    (-)   (-)  (m/s)  (deg)",
+            "0.0  15.0  0.0   0.0   5.0    0.0   0.0   0.0    0.0",
+            "0.1  15.0  0.0   0.0   0.0    0.0   0.0   0.0    0.0",
+            "1.0  15.0  0.0   0.0   0.0    0.0   0.0   0.0    0.0",
+        ]
+    end
 
     numWindPts = [1] #[Int(length(positions)/3)]     # total number of wind points requesting velocities for at each time step. must be integer
 
