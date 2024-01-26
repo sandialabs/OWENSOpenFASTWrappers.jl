@@ -1,7 +1,7 @@
 name = "OpenFASTWrappers"
 uuid = "c94a8522-7796-4509-a98e-0a76268fb7dc"
 authors = ["Kevin R. Moore <kevmoor@sandia.gov> and contributors"]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
