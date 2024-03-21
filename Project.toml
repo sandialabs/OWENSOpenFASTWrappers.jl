@@ -1,0 +1,19 @@
+name = "OWENSOpenFASTWrappers"
+uuid = "1f4f357c-c864-4b71-8437-d48f9e1bb3e6"
+authors = ["Kevin R. Moore <kevmoor@sandia.gov> and contributors"]
+version = "1.0.0"
+
+[deps]
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
