@@ -9,7 +9,7 @@ using Test
 # openfast/build/modules/inflowwind is where the dynamic library will be
 # Move the dynamic library to VAWTHydro.jl/bin or a custom location if you specify the path in the call
 turbsim_filename = "$path/data/ifw/test.bts"
-inflowlib_filename = "$path/../..//openfast/build/modules/inflowwind/libifw_c_binding"
+inflowlib_filename = "$path/../deps/openfast/build/modules/inflowwind/libifw_c_binding"
 OWENSOpenFASTWrappers.ifwinit(;inflowlib_filename,turbsim_filename)
 velocity = OWENSOpenFASTWrappers.ifwcalcoutput([0.0,0.0,100.0],0.1)
 println(velocity)

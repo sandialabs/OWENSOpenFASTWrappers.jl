@@ -9,3 +9,5 @@
 *.pdf
 *.ech
 *.vscode
+*.log
+/deps/openfast
