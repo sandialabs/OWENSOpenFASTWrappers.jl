@@ -41,7 +41,7 @@ line_tensions_ts[1, :] = line_tensions
 
 # Time marching
 for (idx, t) in enumerate(ts[1:end-2])
-    for correction in range(1, num_corrections+1)
+    for correction = 1:num_corrections+1
         # If there are correction steps, the inputs would be updated using outputs
         # from the other modules.
         ptfm_pos = ptfm_pos_ts[idx+1, :]
