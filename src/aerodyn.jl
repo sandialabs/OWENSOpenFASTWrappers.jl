@@ -247,11 +247,9 @@ end
 calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 
 # Inputs:
-* `ad_input_file_passed::int`: flag to indicate the AD15 input file is passed as a string [0=false, 1=true]
-                                (set to false if passing input file name instead, NOT SUPPORTED YET)
+* `ad_input_file_passed::int`: flag to indicate the AD15 input file is passed as a string 0=false, 1=true (set to false if passing input file name instead, NOT SUPPORTED YET)
 * `ad_input_file::string`: name of input file for AD15 -- this is read by julia and passed to AD15
-* `ifw_input_file_passed::int`: flag to indicate the InflowWind input file is passed as a string [0=false, 1=true]
-                                (set to false if passing input file name instead, NOT SUPPORTED YET)
+* `ifw_input_file_passed::int`: flag to indicate the InflowWind input file is passed as a string 0=false, 1=true (set to false if passing input file name instead, NOT SUPPORTED YET)
 * `ifw_input_file::string`: name of input file for InflowWind -- this is read by julia and passed to InflowWind
 
 * `gravity::float`:     optional, gravity value (default: 9.80665 m/s^2)
