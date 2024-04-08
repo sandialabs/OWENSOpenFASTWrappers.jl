@@ -1,5 +1,8 @@
 # OWENSOpenFASTWrappers
 
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://sandialabs.github.io/OWENSOpenFASTWrappers.jl)
+![](https://github.com/sandialabs/OWENSOpenFASTWrappers.jl/workflows/CI/badge.svg)
+
 A repository containing julia wrappers for standalone openFAST modules.
 
 ## Quick Start for Developing Julia Packages

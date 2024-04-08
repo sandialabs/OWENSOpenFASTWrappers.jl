@@ -1,9 +1,9 @@
 localpath = dirname(@__FILE__)
 if Sys.isunix()
-    
+
     println("Clone the correct openfast branch")
     cd(localpath)
-    run(`git clone --depth 1 git@github.com:andrew-platt/openfast.git`)
+    run(`git clone --depth 1 https://github.com/andrew-platt/openfast.git`)
     cd(joinpath(localpath, "openfast"))
     run(`git remote set-branches origin '*'`)
     run(`git fetch --depth 1 origin f/ADI_c_binding_multiRotor`)
