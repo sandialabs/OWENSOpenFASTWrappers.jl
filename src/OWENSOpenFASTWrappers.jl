@@ -2,7 +2,7 @@ module OWENSOpenFASTWrappers
 import Libdl
 using LinearAlgebra     # for aerodyn cross-product
 
-const path,_ = splitdir(@__FILE__)
+const path = splitdir(@__FILE__)[1]
 
 # InflowWind
 export ifwinit, ifwcalcoutput, ifwend

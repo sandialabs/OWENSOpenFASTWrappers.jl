@@ -32,7 +32,7 @@ forces = Vector{Float32}(undef, 6)
 line_tensions = Vector{Float32}(undef, 6)
 
 ## Run MoorDyn
-OWENSOpenFASTWrappers.MD_Init(md_lib_filename; init_ptfm_pos=ptfm_pos_ts[1,:], interp_order=interp_order)
+OWENSOpenFASTWrappers.MD_Init(;mdlib_filename=md_lib_filename, init_ptfm_pos=ptfm_pos_ts[1,:], interp_order=interp_order)
 
 # Time step zero
 forces[:], line_tensions[:] = OWENSOpenFASTWrappers.MD_CalcOutput(t_initial, ptfm_pos_ts[1,:], ptfm_vel_ts[1,:], ptfm_acc_ts[1,:], forces, line_tensions)

@@ -3,8 +3,6 @@ global sym_calcoutput
 global sym_end
 global backup_Vx
 
-path,_ = splitdir(@__FILE__)
-
 ifw_active = true
 
 
@@ -22,8 +20,10 @@ calls inflow wind init
 * `none`:
 
 """
-function ifwinit(;inflowlib_filename="$path/../deps/bin/libifw_c_binding",HWindSpeed=10.125,turbsim_filename="$path/test.bts")
-
+function ifwinit(;inflowlib_filename="$path/../deps/openfast/build/modules/inflowwind/libifw_c_binding",HWindSpeed=10.125,turbsim_filename="$path/test.bts")
+    if isnothing(inflowlib_filename)
+        inflowlib_filename="$path/../deps/openfast/build/modules/inflowwind/libifw_c_binding"
+    end
     # Where the input is manipulated
     HWindSpeed_str = "       $(round(HWindSpeed,digits=1))   HWindSpeed     - Horizontal windspeed                            (m/s)"
     turbsim_str = "\"$turbsim_filename\"      filename_bts   - name of the full field wind file to use (.bts)"

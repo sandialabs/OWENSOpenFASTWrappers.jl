@@ -789,6 +789,10 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     nacAngle    = [zeros(3) for i=1:numTurbines],                      # m
     )
 
+    if isnothing(adi_lib)
+        adi_lib = "$path/../deps/openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding"
+    end
+
     # load library and set number of turbines
     try
         adiPreInit(adi_lib,numTurbines,transposeDCM;adi_debug)
