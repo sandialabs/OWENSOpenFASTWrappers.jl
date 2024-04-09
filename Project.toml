@@ -1,7 +1,7 @@
 name = "OWENSOpenFASTWrappers"
 uuid = "1f4f357c-c864-4b71-8437-d48f9e1bb3e6"
 authors = ["Kevin R. Moore <kevmoor@sandia.gov> and contributors"]
-version = "1.0.0"
+version = "1.0.1"
 
 [deps]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
