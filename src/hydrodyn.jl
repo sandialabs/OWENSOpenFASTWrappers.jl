@@ -4,14 +4,12 @@ global sym_updatestates
 global sym_end
 global backup_Vx
 
-path,_ = splitdir(@__FILE__)
-
 mutable struct HD_Error
 error_status
 error_message
 end
 
-function HD_Init(hdlib_filename, output_root_name; hd_input_file="none", WtrDens=1025, WtrDpth=200, MSL2SWL=0,
+function HD_Init(;hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/libhydrodyn_c_binding", output_root_name="./HD", hd_input_file="none", WtrDens=1025, WtrDpth=200, MSL2SWL=0,
     WaveMod=2, WaveStMod=0, WaveHs=2.0, WaveTp=6.0, WavePkShp=1.0, WaveDir=0.0, WaveSeed=123456789, gravity = 9.80665,
     PotFile="$path/../test/tlpmit",
     CurrMod=0, CurrSSV0=0, CurrSSDir="DEFAULT", CurrNSRef=20, CurrNSV0=0, CurrNSDir=0, CurrDIV=0, CurrDIDir=0,

@@ -31,7 +31,7 @@ out_vals_ts = zeros(Cfloat,length(ts), 1)
 forces = zeros(Cfloat,6)
 out_vals = zeros(Cfloat,43)
 # Run HydroDyn
-OWENSOpenFASTWrappers.HD_Init(hd_lib_filename, output_root_name, hd_input_file=hd_input_file, PotFile=potmod_dir, t_initial=t_initial, dt=dt, t_max=t_max)
+OWENSOpenFASTWrappers.HD_Init(;hdlib_filename=hd_lib_filename, output_root_name=output_root_name, hd_input_file=hd_input_file, PotFile=potmod_dir, t_initial=t_initial, dt=dt, t_max=t_max)
 
 # Time step zero
 OWENSOpenFASTWrappers.HD_CalcOutput(t_initial, ptfm_pos_ts[1,:], ptfm_vel_ts[1,:], ptfm_acc_ts[1,:], forces, out_vals)

@@ -3,6 +3,7 @@ if Sys.isunix()
 
     println("Clone the correct openfast branch")
     cd(localpath)
+    run(`rm -rf openfast/`)
     run(`git clone --depth 1 https://github.com/andrew-platt/openfast.git`)
     cd(joinpath(localpath, "openfast"))
     run(`git remote set-branches origin '*'`)
