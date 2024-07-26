@@ -11,3 +11,4 @@
 *.vscode
 *.log
 /deps/openfast
+*.txt

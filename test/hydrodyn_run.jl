@@ -8,10 +8,11 @@ cd(path)
 
 # hd_lib_filename = "$path/../deps/bin/libhydrodyn_c_binding" #change this to match your local path of the HydroDyn DLL
 hd_lib_filename = "$path/../deps/openfast/build/modules/hydrodyn/libhydrodyn_c_binding" #change this to match your local path of the HydroDyn DLL
-ptfm_motions_filename = "$path/OpenFAST_DisplacementTimeseries.dat"
-output_root_name = "$path/hd_wrapper_test"
+ptfm_motions_filename = "$path/data/OpenFAST_DisplacementTimeseries.dat"
+output_root_name = "$path/data/hd_wrapper_test"
 potmod_dir = "$path/data/potential_flow_data/marin_semi"
-hd_input_file = "$path/NRELOffshrBsline5MW_OC4DeepCwindSemi_HydroDyn.dat"
+hd_input_file = "$path/data/NRELOffshrBsline5MW_OC4DeepCwindSemi_HydroDyn.dat"
+ss_input_file = "$path/data/NRELOffshrBsline5MW_OC4DeepCwindSemi_HydroDyn.dat"
 num_corrections = 0
 
 t_initial = 0.0
