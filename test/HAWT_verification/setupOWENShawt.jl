@@ -242,7 +242,7 @@ function setupOWENShawt(OWENSAero,path;
     #########################################
     # println("Initialize Aerodynamics")
     # chord_spl = FLOWMath.akima(numadIn_bld.span./maximum(numadIn_bld.span), numadIn_bld.chord,LinRange(0,1,Nslices))
-    # OWENSAero.setupTurb(shapeX,shapeY,B,chord_spl,tsr,Vinf;AModel,DSModel,
+    # OWENSAero.setupTurb(shapeX,shapeY,B,chord_spl,omega,Vinf;AModel,DSModel,
     # afname = "$path/Airfoils/NACA_0021.dat", #TODO: map to the numad input
     # ifw,
     # turbsim_filename,
