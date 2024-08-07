@@ -334,7 +334,7 @@ function HD_Init(;hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/
     input_string_HD        = join(input_string_HD_array, "\0")
     input_string_HD_length = length(input_string_HD)
 
-    if ss_input_file == "nothing"
+    if ss_input_file == "none"
         @error "Please use Hydrodyn file as the direct string call is under maintainence"
     else
         println("Reading SeaState data from $ss_input_file.")
