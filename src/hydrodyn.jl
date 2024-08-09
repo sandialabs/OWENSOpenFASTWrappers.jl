@@ -9,7 +9,7 @@ error_status
 error_message
 end
 
-function HD_Init(;hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/libhydrodyn_c_binding", output_root_name="./HD", hd_input_file="none", WtrDens=1025, WtrDpth=200, MSL2SWL=0,
+function HD_Init(;hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/libhydrodyn_c_binding", output_root_name="./HD", hd_input_file="none",ss_input_file="none", WtrDens=1025, WtrDpth=200, MSL2SWL=0,
     WaveMod=2, WaveStMod=0, WaveHs=2.0, WaveTp=6.0, WavePkShp=1.0, WaveDir=0.0, WaveSeed=123456789, gravity = 9.80665,
     PotFile="$path/../test/tlpmit",
     CurrMod=0, CurrSSV0=0, CurrSSDir="DEFAULT", CurrNSRef=20, CurrNSV0=0, CurrNSDir=0, CurrDIV=0, CurrDIDir=0,
@@ -20,6 +20,7 @@ function HD_Init(;hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/
 
 
     if hd_input_file == "none"
+        @error "Please use Hydrodyn file as the direct string call is under maintainence"
         # Where the input is manipulated
         WtrDens_str = "      $WtrDens    WtrDens        - Water density (kg/m^3)"
         WtrDpth_str = "      $WtrDpth    WtrDpth        - Water depth (meters)"
@@ -33,7 +34,7 @@ function HD_Init(;hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/
         WaveSeed1_str = "   $WaveSeed    WaveSeed(1)    - First  random seed of incident waves [-2147483648 to 2147483647]    (-)       [unused when WaveMod=0, 5, or 6]"
         PotFile_str = "  \"$PotFile\"    PotFile       - Root name of potential-flow model data; WAMIT output files containing the linear, nondimensionalized, hydrostatic restoring matrix (.hst), frequency-dependent hydrodynamic added mass matrix and damping matrix (.1), and frequency- and direction-dependent wave excitation force vector per unit wave amplitude (.3) (quoted string) [1 to NBody if NBodyMod>1] [MAKE SURE THE FREQUENCIES INHERENT IN THESE WAMIT FILES SPAN THE PHYSICALLY-SIGNIFICANT RANGE OF FREQUENCIES FOR THE GIVEN PLATFORM; THEY MUST CONTAIN THE ZERO- AND INFINITE-FREQUENCY LIMITS!]"
 
-        input_string_array = [
+        input_string_HD_array = [
             "------- HydroDyn v2.03.* Input File --------------------------------------------",
             "NREL 5.0 MW offshore baseline floating platform HydroDyn input properties for the TLP.",
             "   False         Echo           - Echo the input file data (flag)",
@@ -326,12 +327,24 @@ function HD_Init(;hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/
     else
         println("Reading HydroDyn data from $hd_input_file.")
         fid = open(hd_input_file, "r")
-        input_string_array = readlines(fid)
+        input_string_HD_array = readlines(fid)
         close(fid)
     end
 
-    input_string        = join(input_string_array, "\0")
-    input_string_length = length(input_string)
+    input_string_HD        = join(input_string_HD_array, "\0")
+    input_string_HD_length = length(input_string_HD)
+
+    if ss_input_file == "none"
+        @error "Please use Hydrodyn file as the direct string call is under maintainence"
+    else
+        println("Reading SeaState data from $ss_input_file.")
+        fid = open(ss_input_file, "r")
+        input_string_SS_array = readlines(fid)
+        close(fid)
+    end
+
+    input_string_SS        = join(input_string_SS_array, "\0")
+    input_string_SS_length = length(input_string_SS)
 
     # Allocate Outputs
     num_channels = [0]
@@ -349,8 +362,10 @@ function HD_Init(;hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/
 
     ccall(hd_sym_init,Cint,
         (Cstring,           # IN: output_root_name
-        Ptr{Ptr{Cchar}},    # IN: input_string_array
-        Ref{Cint},          # IN: input_string_length
+        Ptr{Ptr{Cchar}},    # IN: SeaState input_string_SS_array
+        Ref{Cint},          # IN: SeaState input_string_SS_length
+        Ptr{Ptr{Cchar}},    # IN: HydroDyn input_string_HD_array
+        Ref{Cint},          # IN: HydroDyn input_string_HD_length
         Ref{Cfloat},        # IN: gravity
         Ref{Cfloat},        # IN: WtrDens
         Ref{Cfloat},        # IN: WtrDpth
@@ -369,8 +384,10 @@ function HD_Init(;hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/
         Ptr{Cint},          # OUT: error_status
         Cstring),           # OUT: error_message
         output_root_name,
-        [input_string],
-        input_string_length,
+        [input_string_SS],
+        input_string_SS_length,
+        [input_string_HD],
+        input_string_HD_length,
         Cfloat.(gravity),
         Cfloat.(WtrDens),
         Cfloat.(WtrDpth),

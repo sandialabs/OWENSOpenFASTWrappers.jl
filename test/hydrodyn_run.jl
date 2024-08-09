@@ -6,12 +6,13 @@ using Test
 
 cd(path)
 
-# hd_lib_filename = "$path/../deps/bin/libhydrodyn_c_binding" #change this to match your local path of the HydroDyn DLL
-hd_lib_filename = "$path/../deps/openfast/build/modules/hydrodyn/libhydrodyn_c_binding" #change this to match your local path of the HydroDyn DLL
-ptfm_motions_filename = "$path/OpenFAST_DisplacementTimeseries.dat"
-output_root_name = "$path/hd_wrapper_test"
-potmod_dir = "$path/data/potential_flow_data/marin_semi"
-hd_input_file = "$path/NRELOffshrBsline5MW_OC4DeepCwindSemi_HydroDyn.dat"
+# hdlib_filename = "$path/../deps/bin/libhydrodyn_c_binding" #change this to match your local path of the HydroDyn DLL
+hdlib_filename = "$path/../deps/openfast/build/modules/hydrodyn/libhydrodyn_c_binding" #change this to match your local path of the HydroDyn DLL
+ptfm_motions_filename = "$path/data/OpenFAST_DisplacementTimeseries.dat"
+output_root_name = "$path/data/hd_wrapper_test"
+PotFile = "$path/data/potential_flow_data/marin_semi"
+hd_input_file = "$path/data/NRELOffshrBsline5MW_OC4DeepCwindSemi_HydroDyn.dat"
+ss_input_file = "$path/data/NRELOffshrBsline5MW_OC4DeepCwindSemi_SeaState.dat"
 num_corrections = 0
 
 t_initial = 0.0
@@ -31,7 +32,7 @@ out_vals_ts = zeros(Cfloat,length(ts), 1)
 forces = zeros(Cfloat,6)
 out_vals = zeros(Cfloat,43)
 # Run HydroDyn
-OWENSOpenFASTWrappers.HD_Init(;hdlib_filename=hd_lib_filename, output_root_name=output_root_name, hd_input_file=hd_input_file, PotFile=potmod_dir, t_initial=t_initial, dt=dt, t_max=t_max)
+OWENSOpenFASTWrappers.HD_Init(;hdlib_filename, output_root_name, hd_input_file, ss_input_file, PotFile, t_initial, dt, t_max)
 
 # Time step zero
 OWENSOpenFASTWrappers.HD_CalcOutput(t_initial, ptfm_pos_ts[1,:], ptfm_vel_ts[1,:], ptfm_acc_ts[1,:], forces, out_vals)

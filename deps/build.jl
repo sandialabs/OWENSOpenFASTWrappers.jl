@@ -16,6 +16,7 @@ if Sys.isunix()
     
     println("run cmake")
     run(`cmake -DBUILD_SHARED_LIBS=ON -DOPENMP=ON ..`)
+    # run(`cmake -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DBUILD_SHARED_LIBS=ON -DOPENMP=ON ..`)
     
     println("and compile")
     run(`make ifw_c_binding`)

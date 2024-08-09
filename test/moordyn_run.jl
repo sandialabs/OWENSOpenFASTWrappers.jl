@@ -8,7 +8,7 @@ using Test
 cd(path)
 
 md_lib_filename = "$path/../deps/openfast/build/modules/moordyn/libmoordyn_c_binding" #change this to match your local path of the MoorDyn DLL
-ptfm_motions_filename = "$path/OpenFAST_DisplacementTimeseries.dat"
+ptfm_motions_filename = "$path/data/OpenFAST_DisplacementTimeseries.dat"
 # md_input_file = "$path/NRELOffshrBsline5MW_OC4DeepCwindSemi_MoorDynv2.dat"
 md_input_file = "$path/data/moordyn_test.dat"
 t_initial = 0.0

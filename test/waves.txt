@@ -1,9 +1,0 @@
- MoorDyn v2 wave/current kinematics grid file
- ---------------------------------------------
- The following 6 lines (4-9) specify the input type then the inputs for x, then, y, then z coordinates.
- 1  - X input type (0: not used; 1: list values in ascending order; 2: uniform specified by -xlim, xlim, num)
-  -35 -25 -15 -5 5 15 25 35 45 55
- 1  - Y input type (0: not used; 1: list values in ascending order; 2: uniform specified by -xlim, xlim, num)
-  -35 0 35
- 1  - Z input type (0: not used; 1: list values in ascending order; 2: uniform specified by -xlim, xlim, num)
-  -15 -7 -3 -1 0

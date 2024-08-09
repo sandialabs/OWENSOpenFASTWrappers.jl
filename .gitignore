@@ -11,3 +11,6 @@
 *.vscode
 *.log
 /deps/openfast
+*.txt
+*/vtk/*
+*/vtk-ADI/*
