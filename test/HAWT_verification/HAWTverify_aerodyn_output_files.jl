@@ -29,9 +29,9 @@ plot_cycle=["#348ABD", "#A60628", "#009E73", "#7A68A6", "#D55E00", "#CC79A7"]
 include("$path/../../src/OWENSOpenFASTWrappers.jl")
 
 # # Run the standalone aerodyn
-run(`$path/../../../openfast/build/modules/aerodyn/aerodyn_driver $path/HAWT_standalone_test.dvr`)
+# run(`$path/../../../../openfast/build/modules/aerodyn/aerodyn_driver $path/HAWT_standalone_test.dvr`)
 
-adi_lib = "$path/../../../openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding" #change this to match your local path of the AeroDyn DLL
+adi_lib = nothing#"$path/../../../../openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding" #change this to match your local path of the AeroDyn DLL
 # adi_lib = "$path/../..//openfast/build/modules/AeroDyn/libAeroDyn_c_binding" #change this to match your local path of the AeroDyn DLL
 
 # output files from ADI
@@ -64,12 +64,12 @@ blade_joint_angle_Degrees = 0.0
 
 # These aren't used by aerodyn...
 shapeX = LinRange(0,R,Nslices+1)
-shapeY = zero(shapeX)
+shapeZ = zero(shapeX)
 
 mymesh,myel,myort,myjoint,sectionPropsArray,mass_twr, mass_bld,
-    FSI_twr, FSI_bld,RefArea,bld_precompinput,
+    FSI_twr, FSI_bld,bld_precompinput,
     bld_precompoutput,plyprops_bld,numadIn_bld,lam_U_bld,lam_L_bld,
-    twr_precompinput,twr_precompoutput,plyprops_twr,numadIn_twr,lam_U_twr,lam_L_twr,aeroForces,RefArea,
+    twr_precompinput,twr_precompoutput,plyprops_twr,numadIn_twr,lam_U_twr,lam_L_twr,aeroForces,
     mass_breakout_blds,mass_breakout_twr,bladeIdx,bladeElem,system,assembly,sections = OWENS.setupOWENShawt(OWENSAero,path;
     rho,
     Nslices,
@@ -80,7 +80,7 @@ mymesh,myel,myort,myjoint,sectionPropsArray,mass_twr, mass_bld,
     H,
     R,
     hubR = 0.0,
-    shapeY,
+    shapeZ,
     shapeX,
     NuMad_geom_xlscsv_file_twr = nothing,
     NuMad_mat_xlscsv_file_twr = nothing,
@@ -280,7 +280,7 @@ ifw_input_file="$path/ifw_primary.dat"
 # OWENSOpenFASTWrappers.writeIWfile(10.0,ifw_input_file;turbsim_filename=nothing)
 
 # Run AeroDyn
-OWENSOpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname_direct,[shapeX],[shapeY],[B],[Ht],[mymesh],[myort],[bladeIdx],[bladeElem];
+OWENSOpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname_direct,[shapeX],[shapeZ],[B],[Ht],[mymesh],[myort],[bladeIdx],[bladeElem];
         rho     = rho,
         adi_dt  = dt,
         adi_nstrut  = 0,
@@ -481,7 +481,7 @@ end
 ############## FSI Simulation ############
 ##########################################
 mymesh.hubPos = [0,0,Ht] #TODO: make this more integrated or automatically set within
-OWENSOpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname_FSI,[shapeX],[shapeY],[B],[Ht],[mymesh],[myort],[bladeIdx],[bladeElem];
+OWENSOpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname_FSI,[shapeX],[shapeZ],[B],[Ht],[mymesh],[myort],[bladeIdx],[bladeElem];
         rho     = rho,
         adi_dt  = dt,
         adi_nstrut  = 0,
@@ -635,9 +635,15 @@ Fxhist = ForceValHist_FSI[:,1:6:end]
 Fyhist = ForceValHist_FSI[:,2:6:end]
 Fzhist = ForceValHist_FSI[:,3:6:end]
 
-fy_directcall = Fyhist[strtspnidx+nodeint-1,:].*cos.(AziHist).-Fxhist[strtspnidx+nodeint-1,:].*sin.(AziHist)
-fz_directcall = Fyhist[strtspnidx+nodeint-1,:].*sin.(AziHist).+Fxhist[strtspnidx+nodeint-1,:].*cos.(AziHist)
-fx_directcall = Fzhist[strtspnidx+nodeint-1,:]
+fy_directcall = Fyhist[:,strtspnidx+nodeint-1].*cos.(AziHist).-Fxhist[:,strtspnidx+nodeint-1].*sin.(AziHist)
+fz_directcall = Fyhist[:,strtspnidx+nodeint-1].*sin.(AziHist).+Fxhist[:,strtspnidx+nodeint-1].*cos.(AziHist)
+fx_directcall = Fzhist[:,strtspnidx+nodeint-1]
+
+fy_FSIcall = fy_directcall#Fyhist_FSI[:,strtspnidx+nodeint-1].*cos.(AziHist_FSI).-Fxhist_FSI[:,strtspnidx+nodeint-1].*sin.(AziHist_FSI)
+fz_FSIcall = fz_directcall#Fyhist_FSI[:,strtspnidx+nodeint-1].*sin.(AziHist_FSI).+Fxhist_FSI[:,strtspnidx+nodeint-1].*cos.(AziHist_FSI)
+fx_FSIcall = fx_directcall#Fzhist_FSI[:,strtspnidx+nodeint-1]
+
+PyPlot.close("all")
 
 for (ihead,header_name) in enumerate(headerNames1)
 
@@ -655,28 +661,28 @@ for (ihead,header_name) in enumerate(headerNames1)
     end
 
     if contains(header_name,"Fxi")
-        PyPlot.plot(ts[2:end],fx_FSIcall./spanlen,color=plot_cycle[2],"-",label="FSI OWENS Side")
+        PyPlot.plot(ts[2:end],fx_FSIcall,color=plot_cycle[2],"-",label="FSI OWENS Side")
         PyPlot.ylabel("$plotname $localbladenum Node $nodeint Global X Force (N)")
     end
     if contains(header_name,"Fyi")
-        PyPlot.plot(ts[2:end],fy_FSIcall./spanlen,color=plot_cycle[2],"-",label="FSI OWENS Side")
+        PyPlot.plot(ts[2:end],fy_FSIcall,color=plot_cycle[2],"-",label="FSI OWENS Side")
         PyPlot.ylabel("$plotname $localbladenum Node $nodeint Global Y Force (N)")
     end
     if contains(header_name,"Fzi")
-        PyPlot.plot(ts[2:end],fz_FSIcall./spanlen,color=plot_cycle[2],"-",label="FSI OWENS Side")
+        PyPlot.plot(ts[2:end],fz_FSIcall,color=plot_cycle[2],"-",label="FSI OWENS Side")
         PyPlot.ylabel("$plotname $localbladenum Node $nodeint Global Z Force (N)")
     end
 
     if contains(header_name,"Fxh")
-        PyPlot.plot(ts[3:end],ForceValHist_FSI[3,2:end],color=plot_cycle[2],"-",label="Stiff OWENS Side")
+        PyPlot.plot(ts[2:end],ForceValHist_FSI[:,3],color=plot_cycle[2],"-",label="Stiff OWENS Side")
         PyPlot.ylabel("Hub X (Windward) Force (N)")
     end
     if contains(header_name,"Fyh")
-        PyPlot.plot(ts[3:end],ForceValHist_FSI[2,2:end],color=plot_cycle[2],"-",label="Stiff OWENS Side")
+        PyPlot.plot(ts[2:end],ForceValHist_FSI[:,2],color=plot_cycle[2],"-",label="Stiff OWENS Side")
         PyPlot.ylabel("Hub Y (Crosswind at t=0) Force (N)")
     end
     if contains(header_name,"Fzh")
-        PyPlot.plot(ts[3:end],-ForceValHist_FSI[1,2:end],color=plot_cycle[2],"-",label="Stiff OWENS Side")
+        PyPlot.plot(ts[2:end],-ForceValHist_FSI[:,1],color=plot_cycle[2],"-",label="Stiff OWENS Side")
         PyPlot.ylabel("Hub Z (Vertical at t=0) Force (N)")
     end
     

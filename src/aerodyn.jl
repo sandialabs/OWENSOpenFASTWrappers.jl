@@ -1731,9 +1731,17 @@ function writeADinputFile(filename="ADInput.dat",blade_filenames=nothing,airfoil
     
     OLAF_str = "\"$OLAF_filename\" OLAFInputFileName - Input file for OLAF [used only when WakeMod=3]"
 
-    #TODO: multiple airfoils, other relevant inputs
-    AF_str ="\"$airfoil_filenames\"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
-
+    if !(typeof(airfoil_filenames)==String)
+        AF_str ="\"$(airfoil_filenames[1])\"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
+        for iairfoil = 2:length(airfoil_filenames)
+            AF_str ="$AF_str\n\"$(airfoil_filenames[iairfoil])\"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
+        end
+        NumAFfiles = length(airfoil_filenames)
+    else
+        AF_str ="\"$(airfoil_filenames)\"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
+        NumAFfiles = 1
+    end
+    
     blades_str = ""
     for ibld = 1:length(blade_filenames) #includes struts since they are modeled as b
         if ibld == length(blade_filenames)
@@ -1793,7 +1801,7 @@ True                   FLookup     - Flag to indicate whether a lookup for f' wi
 3                      InCol_Cd    - The column in the airfoil tables that contains the drag coefficient (-)
 4                      InCol_Cm    - The column in the airfoil tables that contains the pitching-moment coefficient; use zero if there is no Cm column (-)
 0                      InCol_Cpmin - The column in the airfoil tables that contains the Cpmin coefficient; use zero if there is no Cpmin column (-)
-1                      NumAFfiles  - Number of airfoil files used (-)
+$(NumAFfiles)                      NumAFfiles  - Number of airfoil files used (-)
 $AF_str
 ======  Rotor/Blade Properties  =====================================================================
 True                   UseBlCm     - Include aerodynamic pitching moment in calculations?  (flag)
