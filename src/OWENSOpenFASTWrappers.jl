@@ -3,9 +3,10 @@ import Libdl
 using LinearAlgebra     # for aerodyn cross-product
 
 const path = splitdir(@__FILE__)[1]
+OFWpath = path
 
 # InflowWind
-export ifwinit, ifwcalcoutput, ifwend
+export ifwinit, ifwcalcoutput, ifwend, OFWpath
 
 # AD15
 export Turbine, Environment, Structure, adiInit, adiCalcOutput, adiUpdateStates, adiEnd
