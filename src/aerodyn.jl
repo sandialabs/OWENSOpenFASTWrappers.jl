@@ -19,7 +19,9 @@ Does some pre-initializing of the ADI library to setup arrays for each turbine
 * `transposeDCM::int`: required, transpose DCM internally in ADI to match calling code convention for direction cosine matrices (default: 1==true)
 """
 function adiPreInit(adilib_filename, numTurbines,transposeDCM,;adi_debug=0)
-
+    if isnothing(adilib_filename)
+        adilib_filename="$path/../deps/openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding"
+    end
     # Set the error level
     global adi_abort_error_level = 4
 

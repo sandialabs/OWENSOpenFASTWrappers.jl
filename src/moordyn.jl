@@ -16,7 +16,11 @@ def_fairlead_pts = [[20.434, 35.393, -14.],
                     [-40.868, 0., -14.],
                     [20.434, -35.393, -14.]]
 
-function MD_Init(;mdlib_filename="$path/../deps/openfast/build/modules/moordyn/libmoordyn_c_binding", md_input_file="none", WtrDens=1025, WtrDpth=200, init_ptfm_pos=zeros(6), gravity=9.80665, dt=0.01, interp_order=1)
+function MD_Init(;mdlib_filename=nothing, md_input_file="none", WtrDens=1025, WtrDpth=200, init_ptfm_pos=zeros(6), gravity=9.80665, dt=0.01, interp_order=1)
+
+    if isnothing(mdlib_filename)
+        mdlib_filename="$path/../deps/openfast/build/modules/moordyn/libmoordyn_c_binding"
+    end
 
     global md_abort_error_level = 4
 

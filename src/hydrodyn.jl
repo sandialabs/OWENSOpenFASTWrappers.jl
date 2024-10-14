@@ -9,12 +9,16 @@ error_status
 error_message
 end
 
-function HD_Init(;hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/libhydrodyn_c_binding", output_root_name="./HD", hd_input_file="none",ss_input_file="none", WtrDens=1025, WtrDpth=200, MSL2SWL=0,
+function HD_Init(;hdlib_filename=nothing, output_root_name="./HD", hd_input_file="none",ss_input_file="none", WtrDens=1025, WtrDpth=200, MSL2SWL=0,
     WaveMod=2, WaveStMod=0, WaveHs=2.0, WaveTp=6.0, WavePkShp=1.0, WaveDir=0.0, WaveSeed=123456789, gravity = 9.80665,
     PotFile="$path/../test/tlpmit",
     CurrMod=0, CurrSSV0=0, CurrSSDir="DEFAULT", CurrNSRef=20, CurrNSV0=0, CurrNSDir=0, CurrDIV=0, CurrDIDir=0,
     ptfm_ref_pos_x=0.0, ptfm_ref_pos_y=0.0, num_node_pts=1,
     init_node_pos=zeros(6), interp_order=1, t_initial=0.0, dt=0.01, t_max=60.0)
+
+    if isnothing(hdlib_filename)
+        hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/libhydrodyn_c_binding"
+    end
 
     global hd_abort_error_level = 4
 
