@@ -7,6 +7,8 @@
 *.vtp
 *.vtu
 *.pdf
+*.jl.cov
+*.jl.*.cov
 *.ech
 *.vscode
 *.log

@@ -17,7 +17,8 @@ function HD_Init(;hdlib_filename=nothing, output_root_name="./HD", hd_input_file
     init_node_pos=zeros(6), interp_order=1, t_initial=0.0, dt=0.01, t_max=60.0)
 
     if isnothing(hdlib_filename)
-        hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/libhydrodyn_c_binding"
+        # hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/libhydrodyn_c_binding"
+        hdlib_filename = libhydrodyn_c_binding
     end
 
     global hd_abort_error_level = 4
@@ -355,6 +356,8 @@ function HD_Init(;hdlib_filename=nothing, output_root_name="./HD", hd_input_file
     channel_names = string(repeat(" ", 20 * 4000))
     channel_units = string(repeat(" ", 20 * 4000))
 
+    # TODO: No need to explicitly dlopen the library and look up the symbols. It is more
+    # ideomatic to just reference symbols directly in the ccall.
     global hdlib = Libdl.dlopen(hdlib_filename) # Open the library explicitly.
     global hd_active = true
 

@@ -31,5 +31,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
+      - name: Explicitly add OWENSOpenFAST_jll
+        shell: julia --color=yes --project=. {0}
+        run: |
+          using Pkg
+          Pkg.add(url = "https://github.com/sandialabs/OWENSOpenFAST_jll.jl")
+        if: ${{ matrix.version == '1.6' }}
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1

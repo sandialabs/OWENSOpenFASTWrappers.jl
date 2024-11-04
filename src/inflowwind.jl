@@ -20,9 +20,10 @@ calls inflow wind init
 * `none`:
 
 """
-function ifwinit(;inflowlib_filename="$path/../deps/openfast/build/modules/inflowwind/libifw_c_binding",HWindSpeed=10.125,turbsim_filename="$path/test.bts")
+function ifwinit(;inflowlib_filename=libifw_c_binding,HWindSpeed=10.125,turbsim_filename="$path/test.bts")
     if isnothing(inflowlib_filename)
-        inflowlib_filename="$path/../deps/openfast/build/modules/inflowwind/libifw_c_binding"
+        # inflowlib_filename="$path/../deps/openfast/build/modules/inflowwind/libifw_c_binding"
+        inflowlib_filename = libifw_c_binding
     end
     # Where the input is manipulated
     HWindSpeed_str = "       $(round(HWindSpeed,digits=1))   HWindSpeed     - Horizontal windspeed                            (m/s)"
@@ -158,6 +159,8 @@ function ifwinit(;inflowlib_filename="$path/../deps/openfast/build/modules/inflo
 
 
     # try
+        # TODO: No need to explicitly dlopen the library and look up the symbols. It is more
+        # ideomatic to just reference symbols directly in the ccall.
         println("Attempting to access inflow wind at: $inflowlib_filename")
         global inflowlib = Libdl.dlopen(inflowlib_filename) # Open the library explicitly.
         sym_init = Libdl.dlsym(inflowlib, :IfW_C_Init)   # Get a symbol for the function to call.

@@ -7,7 +7,7 @@ using Test
 
 cd(path)
 
-md_lib_filename = "$path/../deps/openfast/build/modules/moordyn/libmoordyn_c_binding" #change this to match your local path of the MoorDyn DLL
+# md_lib_filename = "$path/../deps/openfast/build/modules/moordyn/libmoordyn_c_binding" #change this to match your local path of the MoorDyn DLL
 ptfm_motions_filename = "$path/data/OpenFAST_DisplacementTimeseries.dat"
 # md_input_file = "$path/NRELOffshrBsline5MW_OC4DeepCwindSemi_MoorDynv2.dat"
 md_input_file = "$path/data/moordyn_test.dat"
@@ -32,7 +32,8 @@ forces = Vector{Float32}(undef, 6)
 line_tensions = Vector{Float32}(undef, 6)
 
 ## Run MoorDyn
-OWENSOpenFASTWrappers.MD_Init(;mdlib_filename=md_lib_filename, init_ptfm_pos=ptfm_pos_ts[1,:], interp_order=interp_order)
+# OWENSOpenFASTWrappers.MD_Init(;mdlib_filename=md_lib_filename, init_ptfm_pos=ptfm_pos_ts[1,:], interp_order=interp_order)
+OWENSOpenFASTWrappers.MD_Init(; init_ptfm_pos=ptfm_pos_ts[1,:], interp_order=interp_order)
 
 # Time step zero
 forces[:], line_tensions[:] = OWENSOpenFASTWrappers.MD_CalcOutput(t_initial, ptfm_pos_ts[1,:], ptfm_vel_ts[1,:], ptfm_acc_ts[1,:], forces, line_tensions)
