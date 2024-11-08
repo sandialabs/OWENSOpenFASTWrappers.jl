@@ -20,12 +20,18 @@ Does some pre-initializing of the ADI library to setup arrays for each turbine
 """
 function adiPreInit(adilib_filename, numTurbines,transposeDCM,;adi_debug=0)
     if isnothing(adilib_filename)
-        adilib_filename="$path/../deps/openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding"
+        # adilib_filename="$path/../deps/openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding"
+        adilib_filename = libaerodyn_inflow_c_binding
     end
     # Set the error level
     global adi_abort_error_level = 4
 
     try
+        # TODO: No need to explicitly dlopen the library and look up the symbols. It is more
+        # ideomatic to just reference symbols directly in the ccall, e.g.
+        # ```julia
+        # ccall((:ADI_C_PreInit, libaerodyn_inflow_c_binding), Cint, ...)
+        # ```
         println("Opening AeroDyn-Inflow library at: $adilib_filename")
         global adilib = Libdl.dlopen(adilib_filename) # Open the library explicitly.
         global adi_active = true
@@ -792,7 +798,8 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     )
 
     if isnothing(adi_lib)
-        adi_lib = "$path/../deps/openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding"
+        # adi_lib = "$path/../deps/openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding"
+        adi_lib = libaerodyn_inflow_c_binding
     end
 
     # load library and set number of turbines

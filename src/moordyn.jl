@@ -19,7 +19,8 @@ def_fairlead_pts = [[20.434, 35.393, -14.],
 function MD_Init(;mdlib_filename=nothing, md_input_file="none", WtrDens=1025, WtrDpth=200, init_ptfm_pos=zeros(6), gravity=9.80665, dt=0.01, interp_order=1)
 
     if isnothing(mdlib_filename)
-        mdlib_filename="$path/../deps/openfast/build/modules/moordyn/libmoordyn_c_binding"
+        # mdlib_filename="$path/../deps/openfast/build/modules/moordyn/libmoordyn_c_binding"
+        mdlib_filename = libmoordyn_c_binding
     end
 
     global md_abort_error_level = 4
@@ -83,6 +84,8 @@ function MD_Init(;mdlib_filename=nothing, md_input_file="none", WtrDens=1025, Wt
     channel_names = string(repeat(" ", 20 * 4000))
     channel_units = string(repeat(" ", 20 * 4000))
 
+    # TODO: No need to explicitly dlopen the library and look up the symbols. It is more
+    # ideomatic to just reference symbols directly in the ccall.
     global mdlib = Libdl.dlopen(mdlib_filename) # Open the library explicitly.
     global md_active = true
     global md_sym_init = Libdl.dlsym(mdlib, :MD_C_Init)   # Get a symbol for the function to call.
