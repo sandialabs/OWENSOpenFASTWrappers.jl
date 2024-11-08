@@ -522,7 +522,7 @@ pBC = [ 1 1 0
 1 6 0]
 
 feamodel = OWENS.FEAModel(;analysisType = "TNB",
-    outFilename = "none",
+    dataOutputFilename = "none",
     joint = myjoint,
     platformTurbineConnectionNodeNumber = 1,
     pBC,
