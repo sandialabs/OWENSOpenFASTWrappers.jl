@@ -16,7 +16,7 @@ OWENSOpenFAST_jll = {url = "https://github.com/sandialabs/OWENSOpenFAST_jll.jl"}
 
 [compat]
 DelimitedFiles = "1"
-FLOWMath = "0.4.1"
+FLOWMath = "0.3, 0.4"
 HDF5 = "0.17"
 OWENSOpenFAST_jll = "4.0.0"
 julia = "1"

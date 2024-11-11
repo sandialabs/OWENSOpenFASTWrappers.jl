@@ -11,5 +11,7 @@
 This is part of the Sandia National Labs OWENS toolkit (Onshore/Offshore Wind/Water Energy Simulator).  This package provides a frontend julia wrapper to many of the popular OpenFAST libraries, including AeroDyn, HydroDyn, MoorDyn, InflowWind, and Turbsim.  The package can be used standalone, as shown in the test cases, or in conjunction with OWENS.jl.  The OWENSOpenFAST_jll.jl package was also created, which this is linked to, which provides cross compiled binaries for the major operating systems and significantly improves the installation experience.  Please also note the API reference in these docs, which gives a searchable index of all of the functions with their inputs and outputs. Please make any pull requests against the dev branch.
 
 ## Installation
-]add git@github.com:sandialabs/OWENSOpenFAST_jll.jl.git
-]add git@github.com:sandialabs/OWENSOpenFASTWrappers.jl.git
+```julia
+pkg> add git@github.com:sandialabs/OWENSOpenFAST_jll.jl.git
+pkg> add git@github.com:sandialabs/OWENSOpenFASTWrappers.jl.git
+```
