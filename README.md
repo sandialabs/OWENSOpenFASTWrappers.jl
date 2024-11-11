@@ -1,22 +1,15 @@
 # OWENSOpenFASTWrappers
 
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://sandialabs.github.io/OWENSOpenFASTWrappers.jl)
+[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://sandialabs.github.io/OWENSOpenFASTWrappers.jl/dev)
 ![](https://github.com/sandialabs/OWENSOpenFASTWrappers.jl/workflows/CI/badge.svg)
+[![codecov](https://codecov.io/gh/sandialabs/OWENSOpenFASTWrappers.jl/graph/badge.svg?token=1egaz9f5cT)](https://codecov.io/gh/sandialabs/OWENSOpenFASTWrappers.jl)
 
-A repository containing julia wrappers for standalone openFAST modules.
+* *Documentation:* [sandialabs.github.io/OWENSOpenFASTWrappers.jl/](https://sandialabs.github.io/OWENSOpenFASTWrappers.jl/dev)
+* *Code:* [github.com/sandialabs/OWENSOpenFASTWrappers.jl](https://github.com/sandialabs/OWENSOpenFASTWrappers.jl)
 
-## Quick Start for Developing Julia Packages
+This is part of the Sandia National Labs OWENS toolkit (Onshore/Offshore Wind/Water Energy Simulator).  This package provides a frontend julia wrapper to many of the popular OpenFAST libraries, including AeroDyn, HydroDyn, MoorDyn, InflowWind, and Turbsim.  The package can be used standalone, as shown in the test cases, or in conjunction with OWENS.jl.  The OWENSOpenFAST_jll.jl package was also created, which this is linked to, which provides cross compiled binaries for the major operating systems and significantly improves the installation experience.  Please also note the API reference in these docs, which gives a searchable index of all of the functions with their inputs and outputs. Please make any pull requests against the dev branch.
 
-Please make all feature changes and bug fixes as branches and then create pull requests against the dev branch.  The dev branch will be periodically pulled into master.
-
-- include("./path/modulename.jl/src/modulename.jl") is like a copy and paste and will reload the module every time the script is run
-
-- installing a module by navigating to the module's working directory (and in an interactive julia session), running "] dev ." will install it in dev mode and will pick up changes made in the local package location every time julia restarts.
-
-- installing normally ("] add url/or/path/2/package") installs the package in the "~/.julia" folder and requires the url/path original location to be updated, and a "] update mypackage" to get it to pick up changes.
-
-- Each package has its own "environment" like conda environment.  To activate that environment and add dependencies, navigate to the working directory and run "] activate ." Then, when you "] add dependencyname" it will add it to the Project.toml and Manifest.toml automatically.  To switch back to the general environment, run "] activate"
-
-- Add code in the src/ folder with an include("./yournewfile.jl") in the OpenFASTWrapers.jl file
-
-- Add tests and test data in the test/ folder, add include statements for your tests in the runtests.jl file.
+## Installation
+]add git@github.com:sandialabs/OWENSOpenFAST_jll.jl.git
+]add git@github.com:sandialabs/OWENSOpenFASTWrappers.jl.git

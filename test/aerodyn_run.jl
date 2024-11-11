@@ -20,8 +20,8 @@ import OWENSOpenFASTWrappers
 using Test
 
 # Run the standalone aerodyn
-# run(`$(OWENSOpenFASTWrappers.turbsim()) $path/AeroDynInputs/DLC1_1Vinf10.0.inp`)
-# run(`$(OWENSOpenFASTWrappers.aerodyn_driver()) $path/AeroDynInputs/HVAWT_standalone_test.dvr`)
+run(`$(OWENSOpenFASTWrappers.turbsim()) $path/AeroDynInputs/DLC1_1Vinf10.0.inp`)
+run(`$(OWENSOpenFASTWrappers.aerodyn_driver()) $path/AeroDynInputs/HVAWT_standalone_test.dvr`)
 
 include("$path/AeroDynInputs/meshdeps.jl")
 
@@ -106,7 +106,7 @@ mymesh, myort, myjoint, bladeIdx, bladeElem = create_mesh_struts(;Htwr_base = Ht
 # Create AeroDyn Files
 
 # input files for ADI
-ad_input_file="$path/AeroDynInputs/ADInputFile_OneTurbine.dat"
+ad_input_file="$path/AeroDynInputs/ADInputFile_oneTurbine.dat"
 ifw_input_file="$path/AeroDynInputs/IW.dat"
 blade_filename="$path/AeroDynInputs/blade.dat"
 lower_strut_filename="$path/AeroDynInputs/lower_arm.dat"
