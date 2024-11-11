@@ -2032,7 +2032,7 @@ default FWShedVorticity    - Include shed vorticity in the far wake {default: Fa
 True          TwrShadowOnWake - Include tower flow disturbance effects on wake convection {default:false} [only if TwrPotent or TwrShadow]
 0             ShearModel    - Shear Model {0: No treatment, 1: Mirrored vorticity, default: 0}
 ------------------- SPEEDUP OPTIONS -----------------------------------------------------------
-1             VelocityMethod - Method to determine the velocity {1:Biot-Savart Segment, 2:Particle tree, default: 1}
+2             VelocityMethod - Method to determine the velocity {1:Biot-Savart Segment, 2:Particle tree, default: 1}
 1.5           TreeBranchFactor - Branch radius fraction above which a multipole calculation is used {default: 2.0} [only if VelocityMethod=2]
 1             PartPerSegment - Number of particles per segment [only if VelocityMethod=2]
 ===============================================================================================

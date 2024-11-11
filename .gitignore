@@ -16,3 +16,4 @@
 *.txt
 */vtk/*
 */vtk-ADI/*
+*.bts

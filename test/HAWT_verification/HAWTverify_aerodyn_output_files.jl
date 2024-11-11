@@ -23,8 +23,6 @@ PyPlot.rc("figure",max_open_warning=500)
 plot_cycle=["#348ABD", "#A60628", "#009E73", "#7A68A6", "#D55E00", "#CC79A7"]
 
 # println("Calculate/Set up sectional properties")
-# include("$path/setup_XFlow_25kW.jl")
-# XFlow specific mesh generator
 # include("$path/setupOWENShawt.jl")
 include("$path/../../src/OWENSOpenFASTWrappers.jl")
 
@@ -522,7 +520,7 @@ pBC = [ 1 1 0
 1 6 0]
 
 feamodel = OWENS.FEAModel(;analysisType = "TNB",
-    outFilename = "none",
+    dataOutputFilename = "none",
     joint = myjoint,
     platformTurbineConnectionNodeNumber = 1,
     pBC,
