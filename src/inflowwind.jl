@@ -3,6 +3,11 @@ global sym_calcoutput
 global sym_end
 global backup_Vx
 
+mutable struct IFW_Error
+    error_status
+    error_message
+end
+
 ifw_active = true
 
 
@@ -154,9 +159,6 @@ function ifwinit(;inflowlib_filename=libifw_c_binding,HWindSpeed=10.125,turbsim_
     numChannels = [0]
     channel_names = string(repeat(" ", 20 * 4000))
     channel_units = string(repeat(" ", 20 * 4000))
-    error_status = [0]
-    error_message = string(repeat(" ", 1025))
-
 
     # try
         # TODO: No need to explicitly dlopen the library and look up the symbols. It is more
@@ -166,6 +168,8 @@ function ifwinit(;inflowlib_filename=libifw_c_binding,HWindSpeed=10.125,turbsim_
         sym_init = Libdl.dlsym(inflowlib, :IfW_C_Init)   # Get a symbol for the function to call.
         global sym_calcoutput = Libdl.dlsym(inflowlib, :IfW_C_CalcOutput)   # Get a symbol for the function to call.
         global sym_end = Libdl.dlsym(inflowlib, :IfW_C_End)
+        global ifw_err = IFW_Error([0], string(repeat(" ", 1025)))
+        global ifw_abort_error_level = 4
 
         ccall(sym_init,Cint,
             (Ptr{Ptr{Cchar}}, # IN: input_string_array
@@ -177,8 +181,8 @@ function ifwinit(;inflowlib_filename=libifw_c_binding,HWindSpeed=10.125,turbsim_
             Ptr{Cint}, # OUT: numChannels
             Cstring, # OUT: channel_names
             Cstring, # OUT: channel_units
-            Ptr{Cint}, # OUT: error_status
-            Cstring), # OUT: error_message
+            Ptr{Cint}, # OUT: ifw_err.error_status
+            Cstring), # OUT: ifw_err.error_message
             [input_string], #InputFileStrings_C
             input_string_length,
             [uniform_string], #InputUniformStrings_C
@@ -188,12 +192,10 @@ function ifwinit(;inflowlib_filename=libifw_c_binding,HWindSpeed=10.125,turbsim_
             numChannels,#NumChannels_C
             channel_names, #OutputChannelNames_C
             channel_units, #OutputChannelUnits_C
-            error_status, #ErrStat_C
-            error_message) #ErrMsg_C
-            if error_status[1] != 0
-                @warn "Inflow Wind Init Error"
-                println(error_message)
-            end
+            ifw_err.error_status, #ErrStat_C
+            ifw_err.error_message) #ErrMsg_C
+
+        ifw_check_error()
         # catch
         #     global backup_Vx = HWindSpeed
         #     @warn "inflow wind library is not configured properly, using a steady wind profile [$backup_Vx,0.0,0.0] for Vx, Vy, Vz"
@@ -221,8 +223,8 @@ function ifwcalcoutput(position,time)
     outputChannelValues = zeros(3)
 
     #Reset error message
-    error_message = string(repeat(" ", 1025))
-    error_status = [0]
+    ifw_err.error_message = string(repeat(" ", 1025))
+    ifw_err.error_status = [0]
     velocities = zeros(Float32,3) # output velocities (N x 3)
 
     if ifw_active
@@ -238,18 +240,32 @@ function ifwcalcoutput(position,time)
         Float32.(position),                      # IN: positions - specified by user
         velocities,                     # OUT: velocities at desired positions
         outputChannelValues,                 # OUT: output channel values as described in input file
-        error_status,              # ErrStat_C
-        error_message)                     # ErrMsg_C
+        ifw_err.error_status,              # ErrStat_C
+        ifw_err.error_message)                     # ErrMsg_C
 
-        if error_status[1] != 0
-            @warn "Inflow Wind Calcoutput Error"
-            println(error_message)
-        end
+        ifw_check_error()
 
         return velocities
     else
         # @warn "using 10m/s inflow in the x direction since inflow wind library is misconfigured"
         return [backup_Vx,0.0,0.0]
+    end
+end
+
+function ifw_check_error()
+    if ifw_err.error_status[1] == 0
+        ifw_err.error_status = [0] # reset error status/message
+        ifw_err.error_message = string(repeat(" ", 1025))
+    elseif ifw_err.error_status[1] < ifw_abort_error_level
+        @warn("Error status " * string(ifw_err.error_status[1]) * ": " * string(ifw_err.error_message))
+        ifw_err.error_status = [0] # reset error status/message
+        ifw_err.error_message = string(repeat(" ", 1025))
+    else
+        @warn("Error status " * string(ifw_err.error_status[1]) * ": " * string(ifw_err.error_message))
+        ifw_err.error_status = [0] # reset error status/message
+        ifw_err.error_message = string(repeat(" ", 1025))
+        endAll()
+        error("MoorDyn terminated prematurely, terminating all active OpenFAST libraries.")
     end
 end
 
@@ -260,22 +276,19 @@ calls inflow wind end function and cleanup
 """
 function ifwend()
     #Reset error message
-    error_message = string(repeat(" ", 1025))
-    error_status = [0]
+    ifw_err.error_message = string(repeat(" ", 1025))
+    ifw_err.error_status = [0]
 
     if ifw_active
         ccall( sym_end,Cint,
         (Ptr{Cint}, #ErrStat_C
         Cstring), #ErrMsg_C
-        error_status,
-        error_message)
-
-        if error_status[1] != 0
-            @warn "Inflow Wind End Error"
-            println(error_message)
-        end
+        ifw_err.error_status,
+        ifw_err.error_message)
 
         Libdl.dlclose(inflowlib) # Close the library explicitly.
+
+        ifw_check_error()
 
     end
 end

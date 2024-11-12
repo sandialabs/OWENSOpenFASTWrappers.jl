@@ -196,7 +196,7 @@ function MD_End()
         md_err.error_message)
 
         Libdl.dlclose(mdlib) # Close the library explicitly.
-
+        md_check_error()
     end
 end
 
@@ -212,7 +212,7 @@ function md_check_error()
         @warn("Error status " * string(md_err.error_status[1]) * ": " * string(md_err.error_message))
         md_err.error_status = [0] # reset error status/message
         md_err.error_message = string(repeat(" ", 1025))
-        MD_End()
-        error("MoorDyn terminated prematurely.")
+        endAll()
+        error("MoorDyn terminated prematurely, terminating all active OpenFAST libraries.")
     end
 end

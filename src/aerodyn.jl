@@ -555,9 +555,11 @@ function adiEnd()
                 adi_err.error_message)
         catch
             @error "AeroDyn-Inflow did not end properly"
+            endAll()
         end
 
         Libdl.dlclose(adilib) # Close the library explicitly.
+        adi_check_error()
     end
 end
 
@@ -574,8 +576,8 @@ function adi_check_error()
         @error("Error status " * string(adi_err.error_status[1]) * ": " * string(adi_err.error_message))
         adi_err.error_status = [0] # reset error status/message
         adi_err.error_message = string(repeat(" ", 1025))
-        adiEnd()
-        error("AeroDyn-Inflow terminated prematurely.")
+        endAll()
+        error("AeroDyn-Inflow terminated prematurely, terminating all active OpenFAST libraries.")
     end
 end
 
@@ -1183,6 +1185,7 @@ End ADI and clear data
 function endTurb()
     adiEnd()
     adi_initialized = false
+    Libdl.dlclose(adilib)
 end
 
 # Outstanding questions
