@@ -27,4 +27,19 @@ include("./hydrodyn.jl")
 include("./inflowwind.jl")
 include("./moordyn.jl")
 
+function endAll()
+    if adi_active
+        adiEnd()
+    end
+    if hd_active
+        HD_End()
+    end
+    if ifw_active
+        ifwend()
+    end
+    if md_active
+        MD_End()
+    end
+end
+
 end

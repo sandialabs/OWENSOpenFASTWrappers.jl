@@ -493,7 +493,7 @@ function HD_End()
         hd_err.error_message)
 
         Libdl.dlclose(hdlib) # Close the library explicitly.
-
+        hd_check_error()
     end
 end
 
@@ -509,7 +509,7 @@ function hd_check_error()
         @warn("Error status " * string(hd_err.error_status[1]) * ": " * string(hd_err.error_message))
         hd_err.error_status = [0] # reset error status/message
         hd_err.error_message = string(repeat(" ", 1025))
-        HD_End()
-        error("HydroDyn terminated prematurely.")
+        endAll()
+        error("HydroDyn terminated prematurely, terminating all active OpenFAST libraries.")
     end
 end

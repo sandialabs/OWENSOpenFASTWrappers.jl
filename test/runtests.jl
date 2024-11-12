@@ -16,4 +16,5 @@ end
 
 @testset "AeroDyn" begin
     include("aerodyn_run.jl")
+    include("aerodyn_run.jl") #Test running twice
 end
