@@ -8,7 +8,7 @@ mutable struct IFW_Error
     error_message
 end
 
-ifw_active = true
+ifw_active = false
 
 
 """
@@ -195,6 +195,7 @@ function ifwinit(;inflowlib_filename=libifw_c_binding,HWindSpeed=10.125,turbsim_
             ifw_err.error_status, #ErrStat_C
             ifw_err.error_message) #ErrMsg_C
 
+        global ifw_active = true
         ifw_check_error()
         # catch
         #     global backup_Vx = HWindSpeed

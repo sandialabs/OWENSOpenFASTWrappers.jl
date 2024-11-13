@@ -3,6 +3,7 @@ global sym_calcoutput
 global sym_updatestates
 global sym_end
 global backup_Vx
+global md_active = false
 
 mutable struct MD_Error
     error_status

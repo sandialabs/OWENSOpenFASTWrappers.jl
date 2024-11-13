@@ -2,6 +2,7 @@ global adilib
 global sym_calcoutput
 global sym_updatestates
 global sym_end
+global adi_active = false
 
 mutable struct adiError
     error_status
@@ -65,7 +66,7 @@ function adiPreInit(adilib_filename, numTurbines,transposeDCM,;adi_debug=0)
             adi_debug,
             adi_err.error_status,
             adi_err.error_message)
-
+        global adi_active = true
         adi_check_error()
     catch
         error("AeroDyn-InflowWind library could not initialize turbines")
@@ -419,6 +420,8 @@ function adiInit(output_root_name;
             adi_err.error_status,
             adi_err.error_message)
 
+
+        global adi_active = true
         adi_check_error()
     catch
         error("AeroDyn_Inflow_C_Init failed")
@@ -819,11 +822,11 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     for iturb = 1:numTurbines
 
         # Set up structs for the entire turbine
-        if isHAWT
-            adi_numbl = B[iturb]
-        else #TODO N struts
+        # if isHAWT
+        #     adi_numbl = B[iturb]
+        # else #TODO N struts
             adi_numbl = B[iturb] + B[iturb]*adi_nstrut[iturb]    # Count struts as blades (strut each side of tower counted separately)
-        end
+        # end
         Radius = maximum(bld_x[iturb])
         
         numMeshNodes = getAD15numMeshNodes(bladeIdx[iturb])
@@ -1487,6 +1490,7 @@ function getRootDCM(turbine,u_j,azi,hubAngle)
             #ang1 = [180+Theta,180+Twist,Psi]    # CCW
             #else
             ang1 = [180+Theta,Twist,Psi]        # CW
+            ang2 = [180+Theta,Twist,Psi]        # CW
             #end
         else
             # blades
