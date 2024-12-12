@@ -1743,7 +1743,7 @@ end
 
 
 #ADP: I would not include a hard coded file like this.  This could be a maintenance nightmare as the AD15 input file changes very frequently (almost every OpenFAST release has a change in this file)
-function writeADinputFile(filename="ADInput.dat",blade_filenames=nothing,airfoil_filenames=nothing,OLAF_filename=nothing)
+function writeADinputFile(filename="ADInput.dat",blade_filenames=nothing,airfoil_filenames=nothing,OLAF_filename=nothing;rho=1.225)
     
     OLAF_str = "\"$OLAF_filename\" OLAFInputFileName - Input file for OLAF [used only when WakeMod=3]"
 
@@ -1768,6 +1768,8 @@ function writeADinputFile(filename="ADInput.dat",blade_filenames=nothing,airfoil
 
     end
 
+    airdensstr = "$rho                   AirDens     - Air density (kg/m^3)"
+
     input_string_array = 
 "------- AERODYN v15.03.* INPUT FILE ------------------------------------------------
 Generated with OWENS driver
@@ -1786,7 +1788,7 @@ False                  Buoyancy           - Include buoyancy effects? (flag)
 False                  CompAA      - Flag to compute AeroAcoustics calculation [only used when WakeMod=1 or 2]
 \"AeroAcousticsInput.dat\" AA_InputFile - Aeroacoustics input file
 ======  Environmental Conditions  ===================================================================
-1.225                   AirDens     - Air density (kg/m^3)
+$airdensstr
 1.4639E-05              KinVisc     - Kinematic air viscosity (m^2/s)
 3.350000000000000e+02 SpdSound    - Speed of sound (m/s)
 1.035000000000000e+05 Patm        - Atmospheric pressure (Pa) [used only when CavitCheck=True]
