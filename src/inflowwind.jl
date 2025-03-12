@@ -25,15 +25,17 @@ calls inflow wind init
 * `none`:
 
 """
-function ifwinit(;inflowlib_filename=libifw_c_binding,HWindSpeed=10.125,turbsim_filename="$path/test.bts")
+function ifwinit(;inflowlib_filename=libifw_c_binding,HWindSpeed=10.125,RefHt=50.0,RefLength=25.0,turbsim_filename="$path/test.bts")
     if isnothing(inflowlib_filename)
-        # inflowlib_filename="$path/../deps/openfast/build/modules/inflowwind/libifw_c_binding"
         inflowlib_filename = libifw_c_binding
     end
     # Where the input is manipulated
     HWindSpeed_str = "       $(round(HWindSpeed,digits=1))   HWindSpeed     - Horizontal windspeed                            (m/s)"
     turbsim_str = "\"$turbsim_filename\"      filename_bts   - name of the full field wind file to use (.bts)"
     uniformWind_str = "\"$turbsim_filename\"      FileName_Uni   - Filename of time series data for uniform wind field.      (-)"
+    refheight_str = "$RefHt   RefHt          - Reference height for horizontal wind speed      (m)"
+    refheight_uni_str = "$RefHt   RefHt_Uni      - Reference height for horizontal wind speed                (m)"
+    reflen_str = "$(RefLength*10)   RefLength      - Reference length for linear horizontal and vertical sheer (-)"
 
     if turbsim_filename[end-3:end] == ".bts"
         WindType = 3
@@ -57,12 +59,12 @@ function ifwinit(;inflowlib_filename=libifw_c_binding,HWindSpeed=10.125,turbsim_
                 "1   WindVziList    - List of coordinates in the inertial Z direction (m)",
         "================== Parameters for Steady Wind Conditions [used only for WindType = 1] =========================",
                 "$HWindSpeed_str",
-                "150   RefHt          - Reference height for horizontal wind speed      (m)",
+                "$refheight_str",
                 "0.0   PLexp          - Power law exponent                              (-)",
         "================== Parameters for Uniform wind file   [used only for WindType = 2] ============================",
    "$uniformWind_str    FileName_Uni   - Filename of time series data for uniform wind field.      (-)",
-                "15   RefHt_Uni      - Reference height for horizontal wind speed                (m)",
-            "10   RefLength      - Reference length for linear horizontal and vertical sheer (-)",
+   "$refheight_uni_str",
+   "$reflen_str",
         "================== Parameters for Binary TurbSim Full-Field files   [used only for WindType = 3] ==============",
         "$turbsim_str",
         "================== Parameters for Binary Bladed-style Full-Field files   [used only for WindType = 4] =========",
@@ -266,7 +268,7 @@ function ifw_check_error()
         ifw_err.error_status = [0] # reset error status/message
         ifw_err.error_message = string(repeat(" ", 1025))
         endAll()
-        error("MoorDyn terminated prematurely, terminating all active OpenFAST libraries.")
+        error("InflowWind terminated prematurely, terminating all active OpenFAST libraries.")
     end
 end
 
