@@ -2069,10 +2069,14 @@ GridName	DTOut         - XStart XEnd nX YStart YEnd nY ZStart ZEnd nZ
     return input_string_array
 end
 
-function writeIWfile(Vinf,filename = "./AD15-input/IW_test.dat";WindType=1,windINPfilename=nothing)
+function writeIWfile(Vinf,filename = "./AD15-input/IW_test.dat";RefHt=50.0,RefLength=25.0,WindType=1,windINPfilename=nothing)
     HWindSpeed_str = "$(round(Vinf,digits=6))   HWindSpeed     - Horizontal windspeed                            (m/s)"
     turbsim_str = "\"$windINPfilename\"      filename_bts   - name of the full field wind file to use (.bts)"
     uniformWind_str = "\"$windINPfilename\"      FileName_Uni   - Filename of time series data for uniform wind field.      (-)"
+    refheight_str = "$RefHt   RefHt          - Reference height for horizontal wind speed      (m)"
+    refheight_uni_str = "$RefHt   RefHt_Uni      - Reference height for horizontal wind speed                (m)"
+    reflen_str = "$(RefLength*10)   RefLength      - Reference length for linear horizontal and vertical sheer (-)"
+
 
     input_string_array = 
 "------- InflowWind INPUT FILE -------------------------------------------------------------------------
@@ -2089,12 +2093,12 @@ False         Echo           - Echo input data to <RootName>.ech (flag)
             50   WindVziList    - List of coordinates in the inertial Z direction (m)
 ================== Parameters for Steady Wind Conditions [used only for WindType = 1] =========================
         $HWindSpeed_str
-            50   RefHt          - Reference height for horizontal wind speed      (m)
+        $refheight_str
             0   PLExp          - Power law exponent                              (-)
 ================== Parameters for Uniform wind file   [used only for WindType = 2] ============================
     $uniformWind_str    FileName_Uni   - Filename of time series data for uniform wind field.      (-)
-        100   RefHt_Uni      - Reference height for horizontal wind speed                (m)
-        125.88   RefLength      - Reference length for linear horizontal and vertical sheer (-)
+    $refheight_uni_str
+    $reflen_str
 ================== Parameters for Binary TurbSim Full-Field files   [used only for WindType = 3] ==============
 $turbsim_str
 ================== Parameters for Binary Bladed-style Full-Field files   [used only for WindType = 4 or WindType = 7] =========
