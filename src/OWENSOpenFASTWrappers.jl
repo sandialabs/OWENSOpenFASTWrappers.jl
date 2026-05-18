@@ -19,9 +19,6 @@ export HD_Init, HD_CalcOutput, HD_UpdateStates, HD_End, hydrodyn_driver
 # MoorDyn routines
 export MD_Init, MD_CalcOutput, MD_UpdateStates, MD_End, moordyn_driver
 
-# Platform Point Mesh routines
-export SolvePtfmAccels, SolvePtfmLoads
-
 include("./aerodyn.jl")
 include("./hydrodyn.jl")
 include("./inflowwind.jl")

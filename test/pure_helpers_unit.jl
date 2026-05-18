@@ -1,6 +1,13 @@
 using LinearAlgebra
 using OWENSOpenFASTWrappers
 
+@testset "exported API is defined" begin
+    exported_names = names(OWENSOpenFASTWrappers)
+    @test all(name -> isdefined(OWENSOpenFASTWrappers, name), exported_names)
+    @test :SolvePtfmAccels ∉ exported_names
+    @test :SolvePtfmLoads ∉ exported_names
+end
+
 @testset "pure AeroDyn helper functions" begin
     @test OWENSOpenFASTWrappers.getAD15numMeshNodes([1 3; 5 2]) == 7
 

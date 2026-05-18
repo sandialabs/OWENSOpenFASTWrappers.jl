@@ -278,6 +278,8 @@ end
 calls inflow wind end function and cleanup
 """
 function ifwend()
+    global ifw_active
+
     #Reset error message
     ifw_err.error_message = string(repeat(" ", 1025))
     ifw_err.error_status = [0]
@@ -292,6 +294,7 @@ function ifwend()
         Libdl.dlclose(inflowlib) # Close the library explicitly.
 
         ifw_check_error()
+        ifw_active = false
 
     end
 end
