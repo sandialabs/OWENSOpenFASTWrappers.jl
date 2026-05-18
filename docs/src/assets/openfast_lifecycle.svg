@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="300" viewBox="0 0 980 300" role="img" aria-labelledby="title desc">
+  <title id="title">OWENSOpenFASTWrappers lifecycle</title>
+  <desc id="desc">Diagram showing OpenFAST input files and JLL libraries flowing through init, calculation, state update, and cleanup calls.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#314056"/>
+    </marker>
+    <style>
+      .box{fill:#f8fafc;stroke:#314056;stroke-width:2;rx:7}
+      .call{fill:#edf6f2;stroke:#24735f;stroke-width:2;rx:7}
+      .warn{fill:#fff7e8;stroke:#9a6700;stroke-width:2;rx:7}
+      .text{font-family:Arial,Helvetica,sans-serif;font-size:18px;fill:#1d2733}
+      .small{font-size:14px;fill:#4b5563}
+      .arrow{stroke:#314056;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="980" height="300" fill="#ffffff"/>
+  <rect class="box" x="28" y="84" width="165" height="104"/>
+  <text class="text" x="58" y="122">Inputs</text>
+  <text class="small" x="58" y="150">.dat, .bts, .fst</text>
+  <text class="small" x="58" y="172">mesh and state</text>
+  <path class="arrow" d="M193 136 H252"/>
+  <rect class="call" x="252" y="84" width="145" height="104"/>
+  <text class="text" x="288" y="122">Init</text>
+  <text class="small" x="288" y="150">ifwinit</text>
+  <text class="small" x="288" y="172">adiInit, HD, MD</text>
+  <path class="arrow" d="M397 136 H456"/>
+  <rect class="call" x="456" y="84" width="180" height="104"/>
+  <text class="text" x="489" y="122">Step</text>
+  <text class="small" x="489" y="150">CalcOutput</text>
+  <text class="small" x="489" y="172">UpdateStates</text>
+  <path class="arrow" d="M636 136 H700"/>
+  <rect class="warn" x="700" y="84" width="225" height="104"/>
+  <text class="text" x="739" y="122">Cleanup</text>
+  <text class="small" x="739" y="150">End calls or endAll()</text>
+  <text class="small" x="739" y="172">release global state</text>
+</svg>
