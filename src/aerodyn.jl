@@ -1291,8 +1291,8 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
         TanAcc = cross( OmegaDot_rad*hubAxis, (rootPos[1:3,ibld]-nacPos)) / norm(hubAxis)
         RootVel[1:3,ibld] = RootVel[1:3,ibld] + TanVel
         RootVel[4:6,ibld] = RootVel[4:6,ibld] + Omega_rad*hubAxis
-        RootVel[1:3,ibld] = RootVel[1:3,ibld] + TanAcc
-        RootVel[4:6,ibld] = RootVel[4:6,ibld] + OmegaDot_rad*hubAxis
+        RootAcc[1:3,ibld] = RootAcc[1:3,ibld] + TanAcc
+        RootAcc[4:6,ibld] = RootAcc[4:6,ibld] + OmegaDot_rad*hubAxis
     end
 
     ### 3. add in contributions from hub motion in global coordinates #TODO: nac velocity

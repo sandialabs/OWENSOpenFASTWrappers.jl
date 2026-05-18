@@ -2,6 +2,8 @@ using Test
 
 path,_ = splitdir(@__FILE__)
 
+include("root_motion_unit.jl")
+
 @testset "InflowWind" begin
     include("ifw_run.jl")
 end
