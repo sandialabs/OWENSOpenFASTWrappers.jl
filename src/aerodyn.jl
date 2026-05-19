@@ -1841,27 +1841,38 @@ end
 
 
 #ADP: I would not include a hard coded file like this.  This could be a maintenance nightmare as the AD15 input file changes very frequently (almost every OpenFAST release has a change in this file)
+function quotedOpenFASTString(value, label)
+    string_value = String(value)
+    if occursin('"', string_value)
+        throw(ArgumentError("$label cannot contain double quotes: $string_value"))
+    end
+
+    return "\"$string_value\""
+end
+
 function writeADinputFile(filename="ADInput.dat",blade_filenames=nothing,airfoil_filenames=nothing,OLAF_filename=nothing;rho=1.225)
     
-    OLAF_str = "\"$OLAF_filename\" OLAFInputFileName - Input file for OLAF [used only when WakeMod=3]"
+    OLAF_str = quotedOpenFASTString(OLAF_filename, "OLAF filename")*" OLAFInputFileName - Input file for OLAF [used only when WakeMod=3]"
 
     if !(typeof(airfoil_filenames)==String)
-        AF_str ="\"$(airfoil_filenames[1])\"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
+        AF_str =quotedOpenFASTString(airfoil_filenames[1], "airfoil filename")*"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
         for iairfoil = 2:length(airfoil_filenames)
-            AF_str ="$AF_str\n\"$(airfoil_filenames[iairfoil])\"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
+            airfoil_file = quotedOpenFASTString(airfoil_filenames[iairfoil], "airfoil filename")
+            AF_str ="$AF_str\n$airfoil_file    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
         end
         NumAFfiles = length(airfoil_filenames)
     else
-        AF_str ="\"$(airfoil_filenames)\"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
+        AF_str =quotedOpenFASTString(airfoil_filenames, "airfoil filename")*"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
         NumAFfiles = 1
     end
     
     blades_str = ""
     for ibld = 1:length(blade_filenames) #includes struts since they are modeled as b
+        blade_file = quotedOpenFASTString(blade_filenames[ibld], "AeroDyn blade filename")
         if ibld == length(blade_filenames)
-            blades_str =blades_str*"$(blade_filenames[ibld]) ADBlFile($ibld) - Name of file containing distributed aerodynamic properties for Blade #1 (-)"
+            blades_str =blades_str*"$blade_file ADBlFile($ibld) - Name of file containing distributed aerodynamic properties for Blade #1 (-)"
         else
-            blades_str =blades_str*"$(blade_filenames[ibld]) ADBlFile($ibld) - Name of file containing distributed aerodynamic properties for Blade #1 (-) \n"
+            blades_str =blades_str*"$blade_file ADBlFile($ibld) - Name of file containing distributed aerodynamic properties for Blade #1 (-) \n"
         end
 
     end

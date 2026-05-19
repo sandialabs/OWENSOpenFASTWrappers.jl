@@ -82,6 +82,21 @@ end
         @test occursin("2   NumBlNds", blade_text)
         @test occursin("2.0 0.0 0.0 0.0 0.0 0.5 3", blade_text)
 
+        ad_input_file = joinpath(dir, "AD input.dat")
+        spaced_blade_file = joinpath(dir, "blade with space.dat")
+        spaced_airfoil_file = joinpath(dir, "airfoil with space.dat")
+        spaced_olaf_file = joinpath(dir, "OLAF with space.dat")
+        ad_input_text = OWENSOpenFASTWrappers.writeADinputFile(
+            ad_input_file,
+            [spaced_blade_file],
+            [spaced_airfoil_file],
+            spaced_olaf_file,
+        )
+        @test read(ad_input_file, String) == ad_input_text
+        @test occursin("\"$spaced_blade_file\" ADBlFile(1)", ad_input_text)
+        @test occursin("\"$spaced_airfoil_file\"    AFNames", ad_input_text)
+        @test occursin("\"$spaced_olaf_file\" OLAFInputFileName", ad_input_text)
+
         olaf_file = joinpath(dir, "OLAF.dat")
         olaf_text = OWENSOpenFASTWrappers.writeOLAFfile(olaf_file; nNWPanel=11, nFWPanels=4)
         @test read(olaf_file, String) == olaf_text
