@@ -4,6 +4,7 @@ path,_ = splitdir(@__FILE__)
 
 include("pure_helpers_unit.jl")
 include("root_motion_unit.jl")
+include("hawt_output_parity.jl")
 
 @testset "InflowWind" begin
     include("ifw_run.jl")

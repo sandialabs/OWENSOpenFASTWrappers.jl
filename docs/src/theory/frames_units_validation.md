@@ -33,10 +33,19 @@ Wrapper tests should verify:
 | Area | Evidence |
 | --- | --- |
 | InflowWind | `test/ifw_run.jl` initializes IFW and samples a velocity. |
-| AeroDyn | `test/aerodyn_run.jl` and `test/HAWT_verification` exercise the AeroDyn wrapper and HAWT mapping path. |
+| AeroDyn | `test/aerodyn_run.jl` and `test/HAWT_verification` exercise the AeroDyn wrapper and HAWT mapping path. `test/hawt_output_parity.jl` parses tracked selected-channel HAWT AeroDyn-driver fixtures and pins wrapper-vs-standalone RMSE/max-error metrics for rotor coefficients, power, hub loads, and a representative blade-node force triplet. |
 | HydroDyn | `test/hydrodyn_run.jl` checks HydroDyn initialization and output calls. |
 | MoorDyn | `test/moordyn_run.jl` checks MoorDyn initialization and output calls. |
 | Pure helpers | `test/pure_helpers_unit.jl` pins state-independent input text and helper behavior. |
+
+`readOpenFASTOutputTable(path)` and
+`openfastOutputChannelMetrics(reference, candidate, channels; rows=...)` are
+the reusable pieces behind those checks. They are intentionally table-based so
+future validation work can compare native OpenFAST outputs, wrapper outputs,
+and reduced examples without plotting or GUI dependencies. When a wrapper
+initialization row is known to differ from the standalone driver, pass an
+explicit row range and document why the excluded row is not part of the physics
+comparison.
 
 ## Hardening Rules
 

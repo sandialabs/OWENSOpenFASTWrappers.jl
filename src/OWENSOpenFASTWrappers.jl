@@ -15,6 +15,7 @@ export openfastLibraryPaths, openfastLibraryArtifactStatus
 export Turbine, Environment, Structure, adiInit, adiCalcOutput, adiUpdateStates, adiEnd, aerodyn_driver
 export normalizeADIRotationDirection, rotationDirectionSign, validateADIRotationDirection
 export normalizeOpenFASTInputSource, openfastInputString
+export readOpenFASTOutputTable, openfastOutputChannelMetrics
 
 # HydroDyn routines
 export HD_Init, HD_CalcOutput, HD_UpdateStates, HD_End, hydrodyn_driver
@@ -26,6 +27,7 @@ include("./aerodyn.jl")
 include("./hydrodyn.jl")
 include("./inflowwind.jl")
 include("./moordyn.jl")
+include("./output_tables.jl")
 
 """
     openfastLibraryPaths() -> NamedTuple
