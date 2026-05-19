@@ -21,6 +21,8 @@ Important inputs include:
 
 Both `adiInit` and `setupTurb` can initialize AeroDyn and InflowWind from filenames or generated input text. The default `*_input_file_passed=0` passes the filename through to the native library. Set `*_input_file_passed=1` with `*_input_source=:file` to read a file in Julia and pass its NUL-separated text to OpenFAST, or set `*_input_source=:text` when the caller already has generated input text or a vector of input lines. This keeps the existing file workflow intact while allowing direct data transfer from OWENS-side input generators.
 
+The AeroDyn regression test exercises both modes: it runs the existing file-based fixture, initializes a second native instance from direct text with absolute in-memory file references, and pins the initial output-channel vector against the file-based initialization. This guards against direct-string regressions without relying only on helper-level text normalization.
+
 `setupTurb` accepts a `rotation_direction` keyword so the requested AeroDyn frame convention is explicit. The currently validated combinations are `rotation_direction = :ccw` for VAWT/cross-flow turbines and `rotation_direction = :cw` for HAWT turbines. Unsupported combinations throw before native AeroDyn initialization because the opposite root-order, span-direction, velocity, and load-frame mappings still need dedicated validation.
 
 When preparing an AeroDyn run, keep these inputs together in the test fixture:

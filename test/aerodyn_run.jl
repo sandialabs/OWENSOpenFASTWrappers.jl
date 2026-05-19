@@ -29,6 +29,7 @@ adi_lib = nothing #change this to match your local path of the AeroDyn DLL
 
 # output files from ADI
 adi_rootname_direct = "$path/ADI_OWENS_direct"
+adi_rootname_text = "$path/ADI_OWENS_text"
 adi_rootname_stiff = "$path/ADI_OWENS_stiff"
 
 num_corrections = 0
@@ -126,6 +127,8 @@ OWENSOpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootnam
         hubAngle = [[0,0,0]],
         isHAWT = false,
         )
+num_channels_file_input = OWENSOpenFASTWrappers.turbenv.num_channels
+initial_output_file_input = vec(OWENSOpenFASTWrappers.adiCalcOutput(t_initial, num_channels_file_input))
 
 # Time marching
 ForceValHist = zeros(length(ts[1:end-1]),Int(mymesh.numNodes*6))
@@ -188,6 +191,43 @@ for (tidx, t) in enumerate(ts[1:end-1])
 
 end
 println("End Aerodynamics")
+OWENSOpenFASTWrappers.endTurb()
+
+function _aerodyn_direct_text_input(filename)
+    aerodyn_inputs = replace(abspath(joinpath(path, "AeroDynInputs")), "\\" => "/")
+    airfoils = replace(abspath(joinpath(path, "airfoils")), "\\" => "/")
+    return replace(
+        read(filename, String),
+        "\"../AeroDynInputs/" => "\"$aerodyn_inputs/",
+        "\"../airfoils/" => "\"$airfoils/",
+    )
+end
+
+ad_input_text = _aerodyn_direct_text_input(ad_input_file)
+ifw_input_text = read(ifw_input_file, String)
+
+OWENSOpenFASTWrappers.setupTurb(adi_lib,ad_input_text,ifw_input_text,adi_rootname_text,[shapeX],[shapeY],[B],[Ht],[mymesh],[myort],[bladeIdx],[bladeElem];
+        ad_input_file_passed = 1,
+        ad_input_source = :text,
+        ifw_input_file_passed = 1,
+        ifw_input_source = :text,
+        rho     = rho,
+        adi_dt  = dt,
+        adi_tmax= t_max,
+        omega   = [omega],
+        adi_wrOuts = 1,     # write output file [0 none, 1 txt, 2 binary, 3 both]
+        adi_DT_Outs = dt,    # output frequency
+        hubPos = [[0,0,Hub_Height]],
+        hubAngle = [[0,0,0]],
+        isHAWT = false,
+        )
+num_channels_text_input = OWENSOpenFASTWrappers.turbenv.num_channels
+initial_output_text_input = vec(OWENSOpenFASTWrappers.adiCalcOutput(t_initial, num_channels_text_input))
+
+@test num_channels_text_input == num_channels_file_input
+@test eltype(initial_output_text_input) === Float32
+@test initial_output_text_input ≈ initial_output_file_input rtol=0 atol=1f-6
+
 OWENSOpenFASTWrappers.endTurb()
 
 
