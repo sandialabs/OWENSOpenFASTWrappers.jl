@@ -230,6 +230,79 @@ initial_output_text_input = vec(OWENSOpenFASTWrappers.adiCalcOutput(t_initial, n
 
 OWENSOpenFASTWrappers.endTurb()
 
+function _initial_aerodyn_output_with_direct_ad(ifw_input, rootname; ifw_input_file_passed, ifw_input_source)
+    OWENSOpenFASTWrappers.setupTurb(
+        adi_lib,
+        ad_input_text,
+        ifw_input,
+        rootname,
+        [shapeX],
+        [shapeY],
+        [B],
+        [Ht],
+        [mymesh],
+        [myort],
+        [bladeIdx],
+        [bladeElem];
+        ad_input_file_passed = 1,
+        ad_input_source = :text,
+        ifw_input_file_passed,
+        ifw_input_source,
+        rho = rho,
+        adi_dt = dt,
+        adi_tmax = t_max,
+        omega = [omega],
+        adi_wrOuts = 0,
+        WrVTK = 0,
+        hubPos = [[0, 0, Hub_Height]],
+        hubAngle = [[0, 0, 0]],
+        isHAWT = false,
+    )
+    try
+        num_channels = OWENSOpenFASTWrappers.turbenv.num_channels
+        return num_channels, vec(OWENSOpenFASTWrappers.adiCalcOutput(t_initial, num_channels))
+    finally
+        OWENSOpenFASTWrappers.endTurb()
+    end
+end
+
+@testset "AeroDyn direct text with TurbSim InflowWind secondary file" begin
+    mktempdir() do dir
+        turbsim_bts = abspath(joinpath(path, "AeroDynInputs", "DLC1_1Vinf10.0.bts"))
+        @test isfile(turbsim_bts)
+
+        turbsim_ifw_file = joinpath(dir, "IW turbsim.dat")
+        turbsim_ifw_text = OWENSOpenFASTWrappers.writeIWfile(
+            Vinf,
+            turbsim_ifw_file;
+            RefHt = Hub_Height,
+            RefLength = R,
+            WindType = 3,
+            windINPfilename = turbsim_bts,
+        )
+
+        turbsim_file_channels, turbsim_file_output = _initial_aerodyn_output_with_direct_ad(
+            turbsim_ifw_file,
+            "$path/ADI_OWENS_turbsim_file";
+            ifw_input_file_passed = 0,
+            ifw_input_source = :file,
+        )
+        turbsim_text_channels, turbsim_text_output = _initial_aerodyn_output_with_direct_ad(
+            turbsim_ifw_text,
+            "$path/ADI_OWENS_turbsim_text";
+            ifw_input_file_passed = 1,
+            ifw_input_source = :text,
+        )
+
+        @test turbsim_text_channels == turbsim_file_channels
+        @test turbsim_text_channels == 2784
+        @test length(turbsim_text_output) == 2784
+        @test eltype(turbsim_text_output) === Float32
+        @test all(isfinite, turbsim_text_output)
+        @test turbsim_text_output ≈ turbsim_file_output rtol=0 atol=1f-6
+    end
+end
+
 
 ######################################
 #### Plot Comparison
