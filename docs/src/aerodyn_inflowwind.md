@@ -25,6 +25,12 @@ The AeroDyn regression test exercises both modes: it runs the existing file-base
 
 `setupTurb` accepts a `rotation_direction` keyword so the requested AeroDyn frame convention is explicit. The currently validated combinations are `rotation_direction = :ccw` for VAWT/cross-flow turbines and `rotation_direction = :cw` for HAWT turbines. Unsupported combinations throw before native AeroDyn initialization because the opposite root-order, span-direction, velocity, and load-frame mappings still need dedicated validation.
 
+The selected-output parity tests under `test/data` are durable regression
+fixtures derived from native AeroDyn-driver and wrapper outputs. They are not
+new physics validations by themselves; they pin the currently supported channel
+mapping, timestep selection, and frame/load conventions so future frame changes
+must update the metrics intentionally.
+
 When preparing an AeroDyn run, keep these inputs together in the test fixture:
 
 - AeroDyn input file;

@@ -33,7 +33,7 @@ Wrapper tests should verify:
 | Area | Evidence |
 | --- | --- |
 | InflowWind | `test/ifw_run.jl` initializes IFW and samples a velocity. |
-| AeroDyn | `test/aerodyn_run.jl` and `test/HAWT_verification` exercise the AeroDyn wrapper and HAWT mapping path. `test/hawt_output_parity.jl` parses tracked selected-channel HAWT AeroDyn-driver fixtures and pins wrapper-vs-standalone RMSE/max-error metrics for rotor coefficients, power, hub loads, and a representative blade-node force triplet. |
+| AeroDyn | `test/aerodyn_run.jl` and `test/HAWT_verification` exercise the AeroDyn wrapper and HAWT mapping path. `test/hawt_output_parity.jl` parses tracked selected-channel HAWT AeroDyn-driver fixtures and pins wrapper-vs-standalone RMSE/max-error metrics for rotor coefficients, power, hub loads, and a representative blade-node force triplet. `test/vawt_output_parity.jl` does the same for the existing VAWT/cross-flow fixture, using selected rotor channels and blade 4 node 5 kinematic/load channels from common wrapper/standalone timesteps. |
 | HydroDyn | `test/hydrodyn_run.jl` checks HydroDyn initialization and output calls. |
 | MoorDyn | `test/moordyn_run.jl` checks MoorDyn initialization and output calls. |
 | Pure helpers | `test/pure_helpers_unit.jl` pins state-independent input text and helper behavior. |
