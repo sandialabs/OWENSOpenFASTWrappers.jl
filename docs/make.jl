@@ -6,6 +6,7 @@ makedocs(;
     pages = [
         "Home" => "index.md",
         "Quickstart" => "quickstart.md",
+        "OpenFAST Artifacts" => "openfast_artifacts.md",
         "Wrapper Lifecycle" => "lifecycle.md",
         "AeroDyn and InflowWind" => "aerodyn_inflowwind.md",
         "HydroDyn and MoorDyn" => "hydrodyn_moordyn.md",

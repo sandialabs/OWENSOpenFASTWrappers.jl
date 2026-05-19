@@ -19,6 +19,7 @@ The package can be used standalone for focused OpenFAST-library calls or as the 
 ## Documentation Map
 
 - [Quickstart](quickstart.md) covers installation and the smallest InflowWind-style lifecycle.
+- [OpenFAST Artifacts](openfast_artifacts.md) covers native-library resolution and platform smoke checks.
 - [Wrapper Lifecycle](lifecycle.md) explains init/calc/update/end ordering and global state cleanup.
 - [AeroDyn and InflowWind](aerodyn_inflowwind.md) records the aerodynamic wrapper path and input-file expectations.
 - [HydroDyn and MoorDyn](hydrodyn_moordyn.md) covers hydrodynamic and mooring wrappers.

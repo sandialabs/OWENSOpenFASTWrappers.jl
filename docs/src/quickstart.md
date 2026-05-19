@@ -19,6 +19,10 @@ Pkg.develop(path = "../OWENSOpenFASTWrappers.jl")
 The docs project uses local package sources and should be built with Julia 1.11
 or newer.
 
+The native OpenFAST libraries are provided by `OWENSOpenFAST_jll`. After install,
+`openfastLibraryArtifactStatus()` is the quickest way to check that the resolved
+platform artifacts exist and can be loaded.
+
 ## Minimal Lifecycle
 
 All library families follow the same broad lifecycle:

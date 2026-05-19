@@ -8,6 +8,21 @@ using OWENSOpenFASTWrappers
     @test :SolvePtfmLoads ∉ exported_names
 end
 
+@testset "OpenFAST artifact smoke checks" begin
+    paths = OWENSOpenFASTWrappers.openfastLibraryPaths()
+    status = OWENSOpenFASTWrappers.openfastLibraryArtifactStatus()
+    expected_keys = (:aerodyn_inflow, :hydrodyn, :inflowwind, :moordyn)
+
+    @test keys(paths) == expected_keys
+    @test keys(status) == expected_keys
+    for key in expected_keys
+        @test getproperty(paths, key) == getproperty(status, key).path
+        @test isabspath(getproperty(status, key).path)
+        @test getproperty(status, key).exists === true
+        @test getproperty(status, key).can_load === true
+    end
+end
+
 @testset "pure AeroDyn helper functions" begin
     @test OWENSOpenFASTWrappers.getAD15numMeshNodes([1 3; 5 2]) == 7
 
