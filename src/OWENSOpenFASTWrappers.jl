@@ -12,6 +12,7 @@ export ifwinit, ifwcalcoutput, ifwend, OFWpath, turbsim, inflowwind_driver
 
 # AD15
 export Turbine, Environment, Structure, adiInit, adiCalcOutput, adiUpdateStates, adiEnd, aerodyn_driver
+export normalizeADIRotationDirection, rotationDirectionSign, validateADIRotationDirection
 
 # HydroDyn routines
 export HD_Init, HD_CalcOutput, HD_UpdateStates, HD_End, hydrodyn_driver

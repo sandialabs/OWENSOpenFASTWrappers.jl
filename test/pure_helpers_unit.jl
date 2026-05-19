@@ -19,7 +19,21 @@ end
     @test OWENSOpenFASTWrappers.calcHubRotMat(zeros(3), pi / 2; rot_axis=3) ≈ rot_z_90 atol=eps()
     @test OWENSOpenFASTWrappers.calcHubRotMat(zeros(3), pi / 2; rot_axis=1) ≈ rot_x_90 atol=eps()
 
+    @test OWENSOpenFASTWrappers.normalizeADIRotationDirection(:ccw) === :ccw
+    @test OWENSOpenFASTWrappers.normalizeADIRotationDirection("counter-clockwise") === :ccw
+    @test OWENSOpenFASTWrappers.normalizeADIRotationDirection(:clockwise) === :cw
+    @test OWENSOpenFASTWrappers.normalizeADIRotationDirection(1) === :ccw
+    @test OWENSOpenFASTWrappers.normalizeADIRotationDirection(-1.0) === :cw
+    @test OWENSOpenFASTWrappers.rotationDirectionSign(:ccw) == 1
+    @test OWENSOpenFASTWrappers.rotationDirectionSign(:cw) == -1
+    @test OWENSOpenFASTWrappers.validateADIRotationDirection(false, :ccw) === :ccw
+    @test OWENSOpenFASTWrappers.validateADIRotationDirection(true, :cw) === :cw
+
     @test_throws ErrorException OWENSOpenFASTWrappers.createSingleRotationDCM(90.0, 4)
+    @test_throws ArgumentError OWENSOpenFASTWrappers.normalizeADIRotationDirection(:upwind)
+    @test_throws ArgumentError OWENSOpenFASTWrappers.normalizeADIRotationDirection(0)
+    @test_throws ArgumentError OWENSOpenFASTWrappers.validateADIRotationDirection(false, :cw)
+    @test_throws ArgumentError OWENSOpenFASTWrappers.validateADIRotationDirection(true, :ccw)
 end
 
 @testset "pure input-file writers" begin

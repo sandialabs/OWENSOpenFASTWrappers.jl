@@ -708,6 +708,60 @@ global turbenv
 global turbstruct
 
 """
+    normalizeADIRotationDirection(rotation_direction) -> Symbol
+
+Normalize a user-facing AeroDyn rotation direction to `:ccw` or `:cw`.
+Accepted inputs are symbols/strings such as `:ccw`, `"counter-clockwise"`,
+`:cw`, and `"clockwise"`, or nonzero numeric signs where positive means
+counter-clockwise and negative means clockwise.
+"""
+function normalizeADIRotationDirection(rotation_direction)
+    if rotation_direction isa Real
+        rotation_direction > 0 && return :ccw
+        rotation_direction < 0 && return :cw
+        throw(ArgumentError("rotation_direction numeric sign must be nonzero"))
+    end
+
+    key = if rotation_direction isa Symbol
+        lowercase(String(rotation_direction))
+    elseif rotation_direction isa AbstractString
+        lowercase(strip(rotation_direction))
+    else
+        throw(ArgumentError("rotation_direction must be a Symbol, String, or nonzero numeric sign"))
+    end
+
+    key in ("ccw", "counterclockwise", "counter-clockwise") && return :ccw
+    key in ("cw", "clockwise") && return :cw
+    throw(ArgumentError("unsupported AeroDyn rotation_direction=$(repr(rotation_direction)); use :ccw or :cw"))
+end
+
+"""
+    rotationDirectionSign(rotation_direction) -> Int
+
+Return `1` for counter-clockwise and `-1` for clockwise AeroDyn rotation.
+"""
+rotationDirectionSign(rotation_direction) =
+    normalizeADIRotationDirection(rotation_direction) === :ccw ? 1 : -1
+
+"""
+    validateADIRotationDirection(isHAWT, rotation_direction) -> Symbol
+
+Validate the requested rotation direction against the currently implemented
+AeroDyn frame mappings. HAWT setup currently supports clockwise rotation;
+VAWT setup currently supports counter-clockwise rotation. Other combinations
+require the remaining OWENSOpenFASTWrappers #22 frame/root-order work.
+"""
+function validateADIRotationDirection(isHAWT::Bool, rotation_direction)
+    direction = normalizeADIRotationDirection(rotation_direction)
+    if isHAWT && direction !== :cw
+        throw(ArgumentError("AeroDyn HAWT setup currently supports clockwise rotation only; counter-clockwise support requires #22 frame validation"))
+    elseif !isHAWT && direction !== :ccw
+        throw(ArgumentError("AeroDyn VAWT setup currently supports counter-clockwise rotation only; clockwise support requires #22 root-order and frame validation"))
+    end
+    return direction
+end
+
+"""
 setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z,B;
     rho = 1.225,
     gravity     =   9.80665,
@@ -766,6 +820,7 @@ Initializes aerodynamic models and sets up backend persistent memory to simplify
 * `nacAngle`: nacelle axis angle, 3-vector (deg)
 * `numTurbines`: number of turbines
 * `isHAWT`: # false: VAWT or cross-flow turbine, true: HAWT
+* `rotation_direction`: implemented AeroDyn rotation convention (`:ccw` for VAWT, `:cw` for HAWT)
 
 
 # Outputs:
@@ -795,6 +850,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     numTurbines = 1,
     adi_nstrut  = [2 for i=1:numTurbines],                            # create_mesh_struts is hard coded for 2 struts per blade
     omega       = [0 for i=1:numTurbines],                          # rad/s
+    rotation_direction = isHAWT ? :cw : :ccw,
     hubPos      = [zeros(3) for i=1:numTurbines],                      # m
     hubAngle    = [zeros(3) for i=1:numTurbines],                      # deg , no rotation from spinning
     refPos      = [zeros(3) for i=1:numTurbines],                      # turbine location
@@ -818,6 +874,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
     global turbine = Array{Turbine}(undef, numTurbines)
     global turbstruct = Array{Structure}(undef, numTurbines)
+    validateADIRotationDirection(isHAWT, rotation_direction)
 
     for iturb = 1:numTurbines
 

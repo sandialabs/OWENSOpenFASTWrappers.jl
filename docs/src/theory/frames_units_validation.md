@@ -23,6 +23,7 @@ Wrapper tests should verify:
 
 - point and mesh coordinates in the expected OpenFAST module frame;
 - blade element ordering and blade index mapping;
+- AeroDyn rotation direction, including whether the blade root starts at the top or bottom of a VAWT blade and whether local span points upward or downward;
 - force and moment signs after converting to OWENS frames;
 - platform position and moment reference for HydroDyn and MoorDyn;
 - InflowWind point locations relative to reference height and reference length.

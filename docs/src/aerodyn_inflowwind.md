@@ -19,6 +19,8 @@ Important inputs include:
 
 `adiInit`, `adiCalcOutput`, `adiUpdateStates`, and `adiEnd` expose the AeroDyn-Inflow lifecycle. The higher-level `setupTurb` path builds the mesh and orientation inputs used by OWENS HAWT-style verification cases.
 
+`setupTurb` accepts a `rotation_direction` keyword so the requested AeroDyn frame convention is explicit. The currently validated combinations are `rotation_direction = :ccw` for VAWT/cross-flow turbines and `rotation_direction = :cw` for HAWT turbines. Unsupported combinations throw before native AeroDyn initialization because the opposite root-order, span-direction, velocity, and load-frame mappings still need dedicated validation.
+
 When preparing an AeroDyn run, keep these inputs together in the test fixture:
 
 - AeroDyn input file;
