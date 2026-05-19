@@ -51,6 +51,20 @@ function _openfast_artifact_status(path)
     return (path = String(path), exists = isfile(path), can_load = can_load)
 end
 
+function _checkedOpenFASTLibraryPath(label, path)
+    path_string = String(path)
+    if !isfile(path_string)
+        throw(ArgumentError("$label library path does not exist: $path_string"))
+    end
+
+    handle = Libdl.dlopen_e(path_string)
+    if handle == C_NULL
+        throw(ArgumentError("$label library path exists but cannot be loaded: $path_string"))
+    end
+    Libdl.dlclose(handle)
+    return path_string
+end
+
 """
     openfastLibraryArtifactStatus() -> NamedTuple
 

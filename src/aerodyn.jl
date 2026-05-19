@@ -24,6 +24,7 @@ function adiPreInit(adilib_filename, numTurbines,transposeDCM,;adi_debug=0)
         # adilib_filename="$path/../deps/openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding"
         adilib_filename = libaerodyn_inflow_c_binding
     end
+    adilib_filename = _checkedOpenFASTLibraryPath("AeroDyn-InflowWind", adilib_filename)
     # Set the error level
     global adi_abort_error_level = 4
 

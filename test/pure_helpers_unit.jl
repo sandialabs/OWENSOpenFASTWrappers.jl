@@ -20,6 +20,36 @@ end
         @test isabspath(getproperty(status, key).path)
         @test getproperty(status, key).exists === true
         @test getproperty(status, key).can_load === true
+        @test OWENSOpenFASTWrappers._checkedOpenFASTLibraryPath(
+            String(key),
+            getproperty(paths, key),
+        ) == getproperty(paths, key)
+    end
+
+    missing_path = joinpath(tempdir(), "missing_openfast_override_library")
+    @test !isfile(missing_path)
+    missing_error = try
+        OWENSOpenFASTWrappers._checkedOpenFASTLibraryPath("UnitTest", missing_path)
+        nothing
+    catch err
+        err
+    end
+    @test missing_error isa ArgumentError
+    @test occursin("UnitTest", sprint(showerror, missing_error))
+    @test occursin(missing_path, sprint(showerror, missing_error))
+
+    mktemp() do path, io
+        write(io, "not a shared library")
+        close(io)
+        load_error = try
+            OWENSOpenFASTWrappers._checkedOpenFASTLibraryPath("UnitTest", path)
+            nothing
+        catch err
+            err
+        end
+        @test load_error isa ArgumentError
+        @test occursin("cannot be loaded", sprint(showerror, load_error))
+        @test occursin(path, sprint(showerror, load_error))
     end
 end
 

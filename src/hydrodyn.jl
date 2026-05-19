@@ -21,6 +21,7 @@ function HD_Init(;hdlib_filename=nothing, output_root_name="./HD", hd_input_file
         # hdlib_filename="$path/../deps/openfast/build/modules/hydrodyn/libhydrodyn_c_binding"
         hdlib_filename = libhydrodyn_c_binding
     end
+    hdlib_filename = _checkedOpenFASTLibraryPath("HydroDyn", hdlib_filename)
 
     global hd_abort_error_level = 4
 
