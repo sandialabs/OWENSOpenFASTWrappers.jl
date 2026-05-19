@@ -256,10 +256,12 @@ end
 calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 
 # Inputs:
-* `ad_input_file_passed::int`: flag to indicate the AD15 input file is passed as a string 0=false, 1=true (set to false if passing input file name instead, NOT SUPPORTED YET)
-* `ad_input_file::string`: name of input file for AD15 -- this is read by julia and passed to AD15
-* `ifw_input_file_passed::int`: flag to indicate the InflowWind input file is passed as a string 0=false, 1=true (set to false if passing input file name instead, NOT SUPPORTED YET)
-* `ifw_input_file::string`: name of input file for InflowWind -- this is read by julia and passed to InflowWind
+* `ad_input_file_passed::int`: 0 passes `ad_input_file` as a filename to the native library; 1 passes direct input text prepared from `ad_input_source`
+* `ad_input_file`: name of input file for AD15 when `ad_input_file_passed=0`, or input data selected by `ad_input_source` when `ad_input_file_passed=1`
+* `ad_input_source::Symbol`: `:file` reads `ad_input_file` and passes direct text; `:text` passes generated direct text
+* `ifw_input_file_passed::int`: 0 passes `ifw_input_file` as a filename to the native library; 1 passes direct input text prepared from `ifw_input_source`
+* `ifw_input_file`: name of input file for InflowWind when `ifw_input_file_passed=0`, or input data selected by `ifw_input_source` when `ifw_input_file_passed=1`
+* `ifw_input_source::Symbol`: `:file` reads `ifw_input_file` and passes direct text; `:text` passes generated direct text
 
 * `gravity::float`:     optional, gravity value (default: 9.80665 m/s^2)
 * `defFldDens::float`:  optional, air density (default: 1.225 kg/m^3)
@@ -293,8 +295,10 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 function adiInit(output_root_name;
     ad_input_file_passed= 1,
     ad_input_file="none",
+    ad_input_source=:file,
     ifw_input_file_passed= 0,
     ifw_input_file="none",
+    ifw_input_source=:file,
     gravity     =   9.80665,  # Gravitational acceleration (m/s^2)
     defFldDens  =     1.225,  # Air density (kg/m^3)
     defKinVisc  = 1.464E-05,  # Kinematic viscosity of working fluid (m^2/s)
@@ -316,38 +320,18 @@ function adiInit(output_root_name;
 
     # AeroDyn 15 input file
     if ad_input_file_passed == 0
-        ad_input_string = ad_input_file
+        ad_input_string = String(ad_input_file)
     else
-        if ad_input_file == "none"
-            ad_input_string_array = [
-            ]
-            error("Default AeroDyn input file not setup yet.")
-        else
-            println("Reading AeroDyn data from $ad_input_file.")
-            fid = open(ad_input_file, "r") 
-            ad_input_string_array = readlines(fid)
-            ad_input_string        = join(ad_input_string_array, "\0")
-            close(fid)
-        end
+        ad_input_string = openfastInputString(ad_input_file; source=ad_input_source, label="AeroDyn")
     end
     ad_input_string_length = length(ad_input_string)
 
 
     # InflowWind input file
     if ifw_input_file_passed == 0 
-        ifw_input_string = ifw_input_file
+        ifw_input_string = String(ifw_input_file)
     else
-        if ifw_input_file == "none"
-            ifw_input_string_array = [
-            ]
-            error("Default InflowWind input file not setup yet.")
-        else
-            println("Reading InfloWind data from $ifw_input_file.")
-            fid = open(ifw_input_file, "r") 
-            ifw_input_string_array = readlines(fid)
-            ifw_input_string        = join(ifw_input_string_array, "\0")
-            close(fid)
-        end
+        ifw_input_string = openfastInputString(ifw_input_file; source=ifw_input_source, label="InflowWind")
     end
     ifw_input_string_length = length(ifw_input_string)
 
@@ -708,6 +692,53 @@ global turbenv
 global turbstruct
 
 """
+    normalizeOpenFASTInputSource(source) -> Symbol
+
+Normalize an OpenFAST input source selector. `:file` means the argument is a
+filename whose lines should be read and passed as direct input text. `:text`
+means the argument already contains generated input text or a vector of lines.
+"""
+function normalizeOpenFASTInputSource(source)
+    key = source isa Symbol ? lowercase(String(source)) :
+          source isa AbstractString ? lowercase(strip(source)) :
+          throw(ArgumentError("OpenFAST input source must be :file or :text"))
+
+    key in ("file", "filename", "path") && return :file
+    key in ("text", "string", "direct", "data", "lines") && return :text
+    throw(ArgumentError("unsupported OpenFAST input source $(repr(source)); use :file or :text"))
+end
+
+_openfast_lines_string(lines) = join(string.(collect(lines)), "\0")
+
+function _openfast_direct_text(input)
+    input isa AbstractVector && return _openfast_lines_string(input)
+    input isa AbstractString || throw(ArgumentError("direct OpenFAST input must be a string or vector of lines"))
+    text = String(input)
+    occursin('\0', text) && return text
+    normalized = replace(text, "\r\n" => "\n", "\r" => "\n")
+    return _openfast_lines_string(split(chomp(normalized), '\n'; keepempty=true))
+end
+
+"""
+    openfastInputString(input; source=:file, label="OpenFAST") -> String
+
+Return the NUL-separated input string expected by the OpenFAST C bindings.
+
+Use `source=:file` when `input` is a filename to read. Use `source=:text` when
+`input` is already generated OpenFAST input text or a vector of input lines.
+"""
+function openfastInputString(input; source=:file, label="OpenFAST")
+    normalized_source = normalizeOpenFASTInputSource(source)
+    if normalized_source === :file
+        input == "none" && error("Default $label input file not setup yet.")
+        println("Reading $label data from $input.")
+        return _openfast_lines_string(readlines(input))
+    else
+        return _openfast_direct_text(input)
+    end
+end
+
+"""
     normalizeADIRotationDirection(rotation_direction) -> Symbol
 
 Normalize a user-facing AeroDyn rotation direction to `:ccw` or `:cw`.
@@ -789,8 +820,12 @@ Initializes aerodynamic models and sets up backend persistent memory to simplify
 
 # Inputs
 * `adi_lib`: path to adi library (.so, .dylib, .dll)
-* `ad_input_file`: input file for aerodyn15
-* `ifw_input_file`: input file for inflow wind
+* `ad_input_file`: filename for AeroDyn15, or direct AeroDyn input text when `ad_input_file_passed=1` and `ad_input_source=:text`
+* `ad_input_file_passed`: 0 passes `ad_input_file` as a filename to the native library; 1 passes direct input text prepared from `ad_input_source`
+* `ad_input_source`: `:file` reads `ad_input_file` and passes direct text; `:text` passes generated direct text
+* `ifw_input_file`: filename for InflowWind, or direct InflowWind input text when `ifw_input_file_passed=1` and `ifw_input_source=:text`
+* `ifw_input_file_passed`: 0 passes `ifw_input_file` as a filename to the native library; 1 passes direct input text prepared from `ifw_input_source`
+* `ifw_input_source`: `:file` reads `ifw_input_file` and passes direct text; `:text` passes generated direct text
 * `adi_rootname`: rootname for vtk outputs
 * `bld_x`: Blade x shape
 * `bld_z`: Blade z shape
@@ -828,6 +863,10 @@ Initializes aerodynamic models and sets up backend persistent memory to simplify
 
 """
 function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z,B,Ht,mymesh,myort,bladeIdx,bladeElem;
+    ad_input_file_passed = 0,
+    ad_input_source = :file,
+    ifw_input_file_passed = 0,
+    ifw_input_source = :file,
     rho         =     1.225,  # fluid density (kg/m^3)
     gravity     =   9.80665,  # Gravitational acceleration (m/s^2)
     defKinVisc  = 1.464E-05,  # Kinematic viscosity of working fluid (m^2/s)
@@ -973,10 +1012,12 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     end
 
     num_channels, channel_names, channel_units = adiInit(adi_rootname;
-        ad_input_file_passed= 0,
+        ad_input_file_passed=ad_input_file_passed,
         ad_input_file=ad_input_file,
-        ifw_input_file_passed= 0,
+        ad_input_source=ad_input_source,
+        ifw_input_file_passed=ifw_input_file_passed,
         ifw_input_file=ifw_input_file,
+        ifw_input_source=ifw_input_source,
         gravity     = gravity,
         defFldDens  = rho,
         defKinVisc  = defKinVisc,

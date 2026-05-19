@@ -29,11 +29,28 @@ end
     @test OWENSOpenFASTWrappers.validateADIRotationDirection(false, :ccw) === :ccw
     @test OWENSOpenFASTWrappers.validateADIRotationDirection(true, :cw) === :cw
 
+    @test OWENSOpenFASTWrappers.normalizeOpenFASTInputSource(:file) === :file
+    @test OWENSOpenFASTWrappers.normalizeOpenFASTInputSource("path") === :file
+    @test OWENSOpenFASTWrappers.normalizeOpenFASTInputSource(:direct) === :text
+    @test OWENSOpenFASTWrappers.normalizeOpenFASTInputSource("lines") === :text
+    @test OWENSOpenFASTWrappers.openfastInputString(["A", "", "B"]; source=:text) == "A\0\0B"
+    @test OWENSOpenFASTWrappers.openfastInputString("A\n\nB\n"; source=:text) == "A\0\0B"
+    @test OWENSOpenFASTWrappers.openfastInputString("A\r\nB\r\n"; source=:text) == "A\0B"
+    @test OWENSOpenFASTWrappers.openfastInputString("A\0B"; source=:text) == "A\0B"
+    mktempdir() do dir
+        input_file = joinpath(dir, "openfast_input.dat")
+        write(input_file, "A\n\nB\n")
+        @test OWENSOpenFASTWrappers.openfastInputString(input_file; source=:file, label="Unit") == "A\0\0B"
+    end
+
     @test_throws ErrorException OWENSOpenFASTWrappers.createSingleRotationDCM(90.0, 4)
     @test_throws ArgumentError OWENSOpenFASTWrappers.normalizeADIRotationDirection(:upwind)
     @test_throws ArgumentError OWENSOpenFASTWrappers.normalizeADIRotationDirection(0)
     @test_throws ArgumentError OWENSOpenFASTWrappers.validateADIRotationDirection(false, :cw)
     @test_throws ArgumentError OWENSOpenFASTWrappers.validateADIRotationDirection(true, :ccw)
+    @test_throws ErrorException OWENSOpenFASTWrappers.openfastInputString("none"; source=:file)
+    @test_throws ArgumentError OWENSOpenFASTWrappers.normalizeOpenFASTInputSource(:invalid)
+    @test_throws ArgumentError OWENSOpenFASTWrappers.openfastInputString(1; source=:text)
 end
 
 @testset "pure input-file writers" begin
