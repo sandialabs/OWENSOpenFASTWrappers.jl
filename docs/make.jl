@@ -15,8 +15,15 @@ makedocs(;
     sitename = "OWENSOpenFASTWrappers.jl",
     authors = "Kevin R. Moore <kevmoor@sandia.gov>",
     remotes = nothing,
+    format = Documenter.HTML(
+        repolink = "https://github.com/sandialabs/OWENSOpenFASTWrappers.jl",
+        edit_link = "master",
+    ),
 )
 
-deploydocs(
-    repo = "github.com/sandialabs/OWENSOpenFASTWrappers.jl.git",
-)
+if get(ENV, "CI", "false") == "true"
+    deploydocs(
+        repo = "github.com/sandialabs/OWENSOpenFASTWrappers.jl.git",
+        devbranch = "master",
+    )
+end
