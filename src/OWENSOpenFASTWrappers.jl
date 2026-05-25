@@ -50,7 +50,7 @@ function _isOpenFASTArtifactPath(path)
 end
 
 function _shouldCheckOpenFASTLibraryLoad(path)
-    return !(Sys.iswindows() && _isOpenFASTArtifactPath(path))
+    return !Sys.iswindows()
 end
 
 function _canLoadOpenFASTLibrary(path)
@@ -90,7 +90,7 @@ end
 Return a smoke-test status for each native OpenFAST shared library resolved
 through `OWENSOpenFAST_jll`. Each entry includes the absolute artifact path,
 whether the file exists, and whether `Libdl` can load it on this platform.
-Windows artifact load checks are skipped and reported as `missing` because
+Windows load checks are skipped and reported as `missing` because
 preflight `dlopen`/`dlclose` checks can hang on hosted Windows runners; wrapper
 initialization still loads the library normally when a module is used.
 """

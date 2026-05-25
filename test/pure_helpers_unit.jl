@@ -51,9 +51,13 @@ end
         catch err
             err
         end
-        @test load_error isa ArgumentError
-        @test occursin("cannot be loaded", sprint(showerror, load_error))
-        @test occursin(path, sprint(showerror, load_error))
+        if Sys.iswindows()
+            @test load_error === nothing
+        else
+            @test load_error isa ArgumentError
+            @test occursin("cannot be loaded", sprint(showerror, load_error))
+            @test occursin(path, sprint(showerror, load_error))
+        end
     end
 end
 

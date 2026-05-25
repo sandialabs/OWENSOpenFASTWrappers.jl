@@ -28,14 +28,15 @@ Each status entry contains:
 | --- | --- |
 | `path` | Absolute path resolved from `OWENSOpenFAST_jll`. |
 | `exists` | Whether that shared-library file exists locally. |
-| `can_load` | Whether `Libdl` can load the library on the current platform. This is `missing` for artifact-provided libraries on Windows because preflight load/unload checks can hang on hosted Windows runners; wrapper initialization still loads the library when a module is used. |
+| `can_load` | Whether `Libdl` can load the library on the current platform. This is `missing` on Windows because preflight load/unload checks can hang on hosted Windows runners; wrapper initialization still loads the library when a module is used. |
 
 If `exists` is false, re-run `Pkg.instantiate()` or reinstall `OWENSOpenFAST_jll`. If `can_load` is false while the file exists, the platform artifact is present but the dynamic loader rejected it; check the operating system, architecture, and any dependent shared-library errors from a direct wrapper test.
 
 Most users should keep the artifact-provided libraries. For local OpenFAST development, the wrapper entry points still accept explicit library paths, such as `ifwinit(inflowlib_filename=...)`, `HD_Init(hdlib_filename=...)`, `MD_Init(mdlib_filename=...)`, and the `adi_lib` argument to `setupTurb`.
 
 Explicit overrides are checked before native module initialization. The path
-must exist and `Libdl` must be able to load it as a shared library on the current
-platform; otherwise the wrapper throws an `ArgumentError` that includes the
-module label and the rejected path. This keeps bad local-library overrides from
-being reported later as ambiguous native initialization failures.
+must exist, and on non-Windows platforms `Libdl` must be able to load it as a
+shared library. Otherwise the wrapper throws an `ArgumentError` that includes
+the module label and the rejected path. Windows skips the preflight load check to
+avoid hosted-runner hangs; native module initialization still reports invalid
+override libraries when they are actually used.
