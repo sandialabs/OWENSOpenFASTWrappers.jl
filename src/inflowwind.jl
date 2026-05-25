@@ -29,6 +29,8 @@ function ifwinit(;inflowlib_filename=libifw_c_binding,HWindSpeed=10.125,RefHt=50
     if isnothing(inflowlib_filename)
         inflowlib_filename = libifw_c_binding
     end
+    inflowlib_filename = _checkedOpenFASTLibraryPath("InflowWind", inflowlib_filename)
+
     # Where the input is manipulated
     HWindSpeed_str = "       $(round(HWindSpeed,digits=1))   HWindSpeed     - Horizontal windspeed                            (m/s)"
     turbsim_str = "\"$turbsim_filename\"      filename_bts   - name of the full field wind file to use (.bts)"
@@ -278,6 +280,8 @@ end
 calls inflow wind end function and cleanup
 """
 function ifwend()
+    global ifw_active
+
     #Reset error message
     ifw_err.error_message = string(repeat(" ", 1025))
     ifw_err.error_status = [0]
@@ -292,6 +296,7 @@ function ifwend()
         Libdl.dlclose(inflowlib) # Close the library explicitly.
 
         ifw_check_error()
+        ifw_active = false
 
     end
 end

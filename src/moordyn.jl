@@ -23,6 +23,7 @@ function MD_Init(;mdlib_filename=nothing, md_input_file="none", WtrDens=1025, Wt
         # mdlib_filename="$path/../deps/openfast/build/modules/moordyn/libmoordyn_c_binding"
         mdlib_filename = libmoordyn_c_binding
     end
+    mdlib_filename = _checkedOpenFASTLibraryPath("MoorDyn", mdlib_filename)
 
     global md_abort_error_level = 4
 

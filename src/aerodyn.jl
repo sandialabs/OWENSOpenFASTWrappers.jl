@@ -24,6 +24,7 @@ function adiPreInit(adilib_filename, numTurbines,transposeDCM,;adi_debug=0)
         # adilib_filename="$path/../deps/openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding"
         adilib_filename = libaerodyn_inflow_c_binding
     end
+    adilib_filename = _checkedOpenFASTLibraryPath("AeroDyn-InflowWind", adilib_filename)
     # Set the error level
     global adi_abort_error_level = 4
 
@@ -256,10 +257,12 @@ end
 calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 
 # Inputs:
-* `ad_input_file_passed::int`: flag to indicate the AD15 input file is passed as a string 0=false, 1=true (set to false if passing input file name instead, NOT SUPPORTED YET)
-* `ad_input_file::string`: name of input file for AD15 -- this is read by julia and passed to AD15
-* `ifw_input_file_passed::int`: flag to indicate the InflowWind input file is passed as a string 0=false, 1=true (set to false if passing input file name instead, NOT SUPPORTED YET)
-* `ifw_input_file::string`: name of input file for InflowWind -- this is read by julia and passed to InflowWind
+* `ad_input_file_passed::int`: 0 passes `ad_input_file` as a filename to the native library; 1 passes direct input text prepared from `ad_input_source`
+* `ad_input_file`: name of input file for AD15 when `ad_input_file_passed=0`, or input data selected by `ad_input_source` when `ad_input_file_passed=1`
+* `ad_input_source::Symbol`: `:file` reads `ad_input_file` and passes direct text; `:text` passes generated direct text
+* `ifw_input_file_passed::int`: 0 passes `ifw_input_file` as a filename to the native library; 1 passes direct input text prepared from `ifw_input_source`
+* `ifw_input_file`: name of input file for InflowWind when `ifw_input_file_passed=0`, or input data selected by `ifw_input_source` when `ifw_input_file_passed=1`
+* `ifw_input_source::Symbol`: `:file` reads `ifw_input_file` and passes direct text; `:text` passes generated direct text
 
 * `gravity::float`:     optional, gravity value (default: 9.80665 m/s^2)
 * `defFldDens::float`:  optional, air density (default: 1.225 kg/m^3)
@@ -293,8 +296,10 @@ calls aerodyn_inflow_init to initialize AeroDyn and InflowWind together
 function adiInit(output_root_name;
     ad_input_file_passed= 1,
     ad_input_file="none",
+    ad_input_source=:file,
     ifw_input_file_passed= 0,
     ifw_input_file="none",
+    ifw_input_source=:file,
     gravity     =   9.80665,  # Gravitational acceleration (m/s^2)
     defFldDens  =     1.225,  # Air density (kg/m^3)
     defKinVisc  = 1.464E-05,  # Kinematic viscosity of working fluid (m^2/s)
@@ -316,38 +321,18 @@ function adiInit(output_root_name;
 
     # AeroDyn 15 input file
     if ad_input_file_passed == 0
-        ad_input_string = ad_input_file
+        ad_input_string = String(ad_input_file)
     else
-        if ad_input_file == "none"
-            ad_input_string_array = [
-            ]
-            error("Default AeroDyn input file not setup yet.")
-        else
-            println("Reading AeroDyn data from $ad_input_file.")
-            fid = open(ad_input_file, "r") 
-            ad_input_string_array = readlines(fid)
-            ad_input_string        = join(ad_input_string_array, "\0")
-            close(fid)
-        end
+        ad_input_string = openfastInputString(ad_input_file; source=ad_input_source, label="AeroDyn")
     end
     ad_input_string_length = length(ad_input_string)
 
 
     # InflowWind input file
     if ifw_input_file_passed == 0 
-        ifw_input_string = ifw_input_file
+        ifw_input_string = String(ifw_input_file)
     else
-        if ifw_input_file == "none"
-            ifw_input_string_array = [
-            ]
-            error("Default InflowWind input file not setup yet.")
-        else
-            println("Reading InfloWind data from $ifw_input_file.")
-            fid = open(ifw_input_file, "r") 
-            ifw_input_string_array = readlines(fid)
-            ifw_input_string        = join(ifw_input_string_array, "\0")
-            close(fid)
-        end
+        ifw_input_string = openfastInputString(ifw_input_file; source=ifw_input_source, label="InflowWind")
     end
     ifw_input_string_length = length(ifw_input_string)
 
@@ -708,6 +693,107 @@ global turbenv
 global turbstruct
 
 """
+    normalizeOpenFASTInputSource(source) -> Symbol
+
+Normalize an OpenFAST input source selector. `:file` means the argument is a
+filename whose lines should be read and passed as direct input text. `:text`
+means the argument already contains generated input text or a vector of lines.
+"""
+function normalizeOpenFASTInputSource(source)
+    key = source isa Symbol ? lowercase(String(source)) :
+          source isa AbstractString ? lowercase(strip(source)) :
+          throw(ArgumentError("OpenFAST input source must be :file or :text"))
+
+    key in ("file", "filename", "path") && return :file
+    key in ("text", "string", "direct", "data", "lines") && return :text
+    throw(ArgumentError("unsupported OpenFAST input source $(repr(source)); use :file or :text"))
+end
+
+_openfast_lines_string(lines) = join(string.(collect(lines)), "\0")
+
+function _openfast_direct_text(input)
+    input isa AbstractVector && return _openfast_lines_string(input)
+    input isa AbstractString || throw(ArgumentError("direct OpenFAST input must be a string or vector of lines"))
+    text = String(input)
+    occursin('\0', text) && return text
+    normalized = replace(text, "\r\n" => "\n", "\r" => "\n")
+    return _openfast_lines_string(split(chomp(normalized), '\n'; keepempty=true))
+end
+
+"""
+    openfastInputString(input; source=:file, label="OpenFAST") -> String
+
+Return the NUL-separated input string expected by the OpenFAST C bindings.
+
+Use `source=:file` when `input` is a filename to read. Use `source=:text` when
+`input` is already generated OpenFAST input text or a vector of input lines.
+"""
+function openfastInputString(input; source=:file, label="OpenFAST")
+    normalized_source = normalizeOpenFASTInputSource(source)
+    if normalized_source === :file
+        input == "none" && error("Default $label input file not setup yet.")
+        println("Reading $label data from $input.")
+        return _openfast_lines_string(readlines(input))
+    else
+        return _openfast_direct_text(input)
+    end
+end
+
+"""
+    normalizeADIRotationDirection(rotation_direction) -> Symbol
+
+Normalize a user-facing AeroDyn rotation direction to `:ccw` or `:cw`.
+Accepted inputs are symbols/strings such as `:ccw`, `"counter-clockwise"`,
+`:cw`, and `"clockwise"`, or nonzero numeric signs where positive means
+counter-clockwise and negative means clockwise.
+"""
+function normalizeADIRotationDirection(rotation_direction)
+    if rotation_direction isa Real
+        rotation_direction > 0 && return :ccw
+        rotation_direction < 0 && return :cw
+        throw(ArgumentError("rotation_direction numeric sign must be nonzero"))
+    end
+
+    key = if rotation_direction isa Symbol
+        lowercase(String(rotation_direction))
+    elseif rotation_direction isa AbstractString
+        lowercase(strip(rotation_direction))
+    else
+        throw(ArgumentError("rotation_direction must be a Symbol, String, or nonzero numeric sign"))
+    end
+
+    key in ("ccw", "counterclockwise", "counter-clockwise") && return :ccw
+    key in ("cw", "clockwise") && return :cw
+    throw(ArgumentError("unsupported AeroDyn rotation_direction=$(repr(rotation_direction)); use :ccw or :cw"))
+end
+
+"""
+    rotationDirectionSign(rotation_direction) -> Int
+
+Return `1` for counter-clockwise and `-1` for clockwise AeroDyn rotation.
+"""
+rotationDirectionSign(rotation_direction) =
+    normalizeADIRotationDirection(rotation_direction) === :ccw ? 1 : -1
+
+"""
+    validateADIRotationDirection(isHAWT, rotation_direction) -> Symbol
+
+Validate the requested rotation direction against the currently implemented
+AeroDyn frame mappings. HAWT setup currently supports clockwise rotation;
+VAWT setup currently supports counter-clockwise rotation. Other combinations
+require the remaining OWENSOpenFASTWrappers #22 frame/root-order work.
+"""
+function validateADIRotationDirection(isHAWT::Bool, rotation_direction)
+    direction = normalizeADIRotationDirection(rotation_direction)
+    if isHAWT && direction !== :cw
+        throw(ArgumentError("AeroDyn HAWT setup currently supports clockwise rotation only; counter-clockwise support requires #22 frame validation"))
+    elseif !isHAWT && direction !== :ccw
+        throw(ArgumentError("AeroDyn VAWT setup currently supports counter-clockwise rotation only; clockwise support requires #22 root-order and frame validation"))
+    end
+    return direction
+end
+
+"""
 setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z,B;
     rho = 1.225,
     gravity     =   9.80665,
@@ -735,8 +821,12 @@ Initializes aerodynamic models and sets up backend persistent memory to simplify
 
 # Inputs
 * `adi_lib`: path to adi library (.so, .dylib, .dll)
-* `ad_input_file`: input file for aerodyn15
-* `ifw_input_file`: input file for inflow wind
+* `ad_input_file`: filename for AeroDyn15, or direct AeroDyn input text when `ad_input_file_passed=1` and `ad_input_source=:text`
+* `ad_input_file_passed`: 0 passes `ad_input_file` as a filename to the native library; 1 passes direct input text prepared from `ad_input_source`
+* `ad_input_source`: `:file` reads `ad_input_file` and passes direct text; `:text` passes generated direct text
+* `ifw_input_file`: filename for InflowWind, or direct InflowWind input text when `ifw_input_file_passed=1` and `ifw_input_source=:text`
+* `ifw_input_file_passed`: 0 passes `ifw_input_file` as a filename to the native library; 1 passes direct input text prepared from `ifw_input_source`
+* `ifw_input_source`: `:file` reads `ifw_input_file` and passes direct text; `:text` passes generated direct text
 * `adi_rootname`: rootname for vtk outputs
 * `bld_x`: Blade x shape
 * `bld_z`: Blade z shape
@@ -766,6 +856,7 @@ Initializes aerodynamic models and sets up backend persistent memory to simplify
 * `nacAngle`: nacelle axis angle, 3-vector (deg)
 * `numTurbines`: number of turbines
 * `isHAWT`: # false: VAWT or cross-flow turbine, true: HAWT
+* `rotation_direction`: implemented AeroDyn rotation convention (`:ccw` for VAWT, `:cw` for HAWT)
 
 
 # Outputs:
@@ -773,6 +864,10 @@ Initializes aerodynamic models and sets up backend persistent memory to simplify
 
 """
 function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z,B,Ht,mymesh,myort,bladeIdx,bladeElem;
+    ad_input_file_passed = 0,
+    ad_input_source = :file,
+    ifw_input_file_passed = 0,
+    ifw_input_source = :file,
     rho         =     1.225,  # fluid density (kg/m^3)
     gravity     =   9.80665,  # Gravitational acceleration (m/s^2)
     defKinVisc  = 1.464E-05,  # Kinematic viscosity of working fluid (m^2/s)
@@ -795,6 +890,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     numTurbines = 1,
     adi_nstrut  = [2 for i=1:numTurbines],                            # create_mesh_struts is hard coded for 2 struts per blade
     omega       = [0 for i=1:numTurbines],                          # rad/s
+    rotation_direction = isHAWT ? :cw : :ccw,
     hubPos      = [zeros(3) for i=1:numTurbines],                      # m
     hubAngle    = [zeros(3) for i=1:numTurbines],                      # deg , no rotation from spinning
     refPos      = [zeros(3) for i=1:numTurbines],                      # turbine location
@@ -818,6 +914,7 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
     global turbine = Array{Turbine}(undef, numTurbines)
     global turbstruct = Array{Structure}(undef, numTurbines)
+    validateADIRotationDirection(isHAWT, rotation_direction)
 
     for iturb = 1:numTurbines
 
@@ -916,10 +1013,12 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     end
 
     num_channels, channel_names, channel_units = adiInit(adi_rootname;
-        ad_input_file_passed= 0,
+        ad_input_file_passed=ad_input_file_passed,
         ad_input_file=ad_input_file,
-        ifw_input_file_passed= 0,
+        ad_input_source=ad_input_source,
+        ifw_input_file_passed=ifw_input_file_passed,
         ifw_input_file=ifw_input_file,
+        ifw_input_source=ifw_input_source,
         gravity     = gravity,
         defFldDens  = rho,
         defKinVisc  = defKinVisc,
@@ -1291,8 +1390,8 @@ function getRootVelAcc(turbine,rootPos,udot_j,uddot_j,azi,Omega_rad,OmegaDot_rad
         TanAcc = cross( OmegaDot_rad*hubAxis, (rootPos[1:3,ibld]-nacPos)) / norm(hubAxis)
         RootVel[1:3,ibld] = RootVel[1:3,ibld] + TanVel
         RootVel[4:6,ibld] = RootVel[4:6,ibld] + Omega_rad*hubAxis
-        RootVel[1:3,ibld] = RootVel[1:3,ibld] + TanAcc
-        RootVel[4:6,ibld] = RootVel[4:6,ibld] + OmegaDot_rad*hubAxis
+        RootAcc[1:3,ibld] = RootAcc[1:3,ibld] + TanAcc
+        RootAcc[4:6,ibld] = RootAcc[4:6,ibld] + OmegaDot_rad*hubAxis
     end
 
     ### 3. add in contributions from hub motion in global coordinates #TODO: nac velocity
@@ -1743,27 +1842,38 @@ end
 
 
 #ADP: I would not include a hard coded file like this.  This could be a maintenance nightmare as the AD15 input file changes very frequently (almost every OpenFAST release has a change in this file)
+function quotedOpenFASTString(value, label)
+    string_value = String(value)
+    if occursin('"', string_value)
+        throw(ArgumentError("$label cannot contain double quotes: $string_value"))
+    end
+
+    return "\"$string_value\""
+end
+
 function writeADinputFile(filename="ADInput.dat",blade_filenames=nothing,airfoil_filenames=nothing,OLAF_filename=nothing;rho=1.225)
     
-    OLAF_str = "\"$OLAF_filename\" OLAFInputFileName - Input file for OLAF [used only when WakeMod=3]"
+    OLAF_str = quotedOpenFASTString(OLAF_filename, "OLAF filename")*" OLAFInputFileName - Input file for OLAF [used only when WakeMod=3]"
 
     if !(typeof(airfoil_filenames)==String)
-        AF_str ="\"$(airfoil_filenames[1])\"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
+        AF_str =quotedOpenFASTString(airfoil_filenames[1], "airfoil filename")*"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
         for iairfoil = 2:length(airfoil_filenames)
-            AF_str ="$AF_str\n\"$(airfoil_filenames[iairfoil])\"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
+            airfoil_file = quotedOpenFASTString(airfoil_filenames[iairfoil], "airfoil filename")
+            AF_str ="$AF_str\n$airfoil_file    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
         end
         NumAFfiles = length(airfoil_filenames)
     else
-        AF_str ="\"$(airfoil_filenames)\"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
+        AF_str =quotedOpenFASTString(airfoil_filenames, "airfoil filename")*"    AFNames            - Airfoil file names (NumAFfiles lines) (quoted strings)"
         NumAFfiles = 1
     end
     
     blades_str = ""
     for ibld = 1:length(blade_filenames) #includes struts since they are modeled as b
+        blade_file = quotedOpenFASTString(blade_filenames[ibld], "AeroDyn blade filename")
         if ibld == length(blade_filenames)
-            blades_str =blades_str*"$(blade_filenames[ibld]) ADBlFile($ibld) - Name of file containing distributed aerodynamic properties for Blade #1 (-)"
+            blades_str =blades_str*"$blade_file ADBlFile($ibld) - Name of file containing distributed aerodynamic properties for Blade #1 (-)"
         else
-            blades_str =blades_str*"$(blade_filenames[ibld]) ADBlFile($ibld) - Name of file containing distributed aerodynamic properties for Blade #1 (-) \n"
+            blades_str =blades_str*"$blade_file ADBlFile($ibld) - Name of file containing distributed aerodynamic properties for Blade #1 (-) \n"
         end
 
     end

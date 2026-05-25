@@ -15,3 +15,6 @@ velocity = OWENSOpenFASTWrappers.ifwcalcoutput([0.0,0.0,100.0],0.1)
 println(velocity)
 OWENSOpenFASTWrappers.ifwend()
 @test isapprox(velocity,[15.636677, -0.3423329, 0.24170564];atol=1e-4)
+@test OWENSOpenFASTWrappers.ifw_active == false
+OWENSOpenFASTWrappers.ifwend()
+@test OWENSOpenFASTWrappers.ifw_active == false

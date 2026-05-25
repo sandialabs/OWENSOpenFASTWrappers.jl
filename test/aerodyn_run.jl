@@ -29,6 +29,7 @@ adi_lib = nothing #change this to match your local path of the AeroDyn DLL
 
 # output files from ADI
 adi_rootname_direct = "$path/ADI_OWENS_direct"
+adi_rootname_text = "$path/ADI_OWENS_text"
 adi_rootname_stiff = "$path/ADI_OWENS_stiff"
 
 num_corrections = 0
@@ -126,6 +127,8 @@ OWENSOpenFASTWrappers.setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootnam
         hubAngle = [[0,0,0]],
         isHAWT = false,
         )
+num_channels_file_input = OWENSOpenFASTWrappers.turbenv.num_channels
+initial_output_file_input = vec(OWENSOpenFASTWrappers.adiCalcOutput(t_initial, num_channels_file_input))
 
 # Time marching
 ForceValHist = zeros(length(ts[1:end-1]),Int(mymesh.numNodes*6))
@@ -189,6 +192,116 @@ for (tidx, t) in enumerate(ts[1:end-1])
 end
 println("End Aerodynamics")
 OWENSOpenFASTWrappers.endTurb()
+
+function _aerodyn_direct_text_input(filename)
+    aerodyn_inputs = replace(abspath(joinpath(path, "AeroDynInputs")), "\\" => "/")
+    airfoils = replace(abspath(joinpath(path, "airfoils")), "\\" => "/")
+    return replace(
+        read(filename, String),
+        "\"../AeroDynInputs/" => "\"$aerodyn_inputs/",
+        "\"../airfoils/" => "\"$airfoils/",
+    )
+end
+
+ad_input_text = _aerodyn_direct_text_input(ad_input_file)
+ifw_input_text = read(ifw_input_file, String)
+
+OWENSOpenFASTWrappers.setupTurb(adi_lib,ad_input_text,ifw_input_text,adi_rootname_text,[shapeX],[shapeY],[B],[Ht],[mymesh],[myort],[bladeIdx],[bladeElem];
+        ad_input_file_passed = 1,
+        ad_input_source = :text,
+        ifw_input_file_passed = 1,
+        ifw_input_source = :text,
+        rho     = rho,
+        adi_dt  = dt,
+        adi_tmax= t_max,
+        omega   = [omega],
+        adi_wrOuts = 1,     # write output file [0 none, 1 txt, 2 binary, 3 both]
+        adi_DT_Outs = dt,    # output frequency
+        hubPos = [[0,0,Hub_Height]],
+        hubAngle = [[0,0,0]],
+        isHAWT = false,
+        )
+num_channels_text_input = OWENSOpenFASTWrappers.turbenv.num_channels
+initial_output_text_input = vec(OWENSOpenFASTWrappers.adiCalcOutput(t_initial, num_channels_text_input))
+
+@test num_channels_text_input == num_channels_file_input
+@test eltype(initial_output_text_input) === Float32
+@test initial_output_text_input ≈ initial_output_file_input rtol=0 atol=1f-6
+
+OWENSOpenFASTWrappers.endTurb()
+
+function _initial_aerodyn_output_with_direct_ad(ifw_input, rootname; ifw_input_file_passed, ifw_input_source)
+    OWENSOpenFASTWrappers.setupTurb(
+        adi_lib,
+        ad_input_text,
+        ifw_input,
+        rootname,
+        [shapeX],
+        [shapeY],
+        [B],
+        [Ht],
+        [mymesh],
+        [myort],
+        [bladeIdx],
+        [bladeElem];
+        ad_input_file_passed = 1,
+        ad_input_source = :text,
+        ifw_input_file_passed,
+        ifw_input_source,
+        rho = rho,
+        adi_dt = dt,
+        adi_tmax = t_max,
+        omega = [omega],
+        adi_wrOuts = 0,
+        WrVTK = 0,
+        hubPos = [[0, 0, Hub_Height]],
+        hubAngle = [[0, 0, 0]],
+        isHAWT = false,
+    )
+    try
+        num_channels = OWENSOpenFASTWrappers.turbenv.num_channels
+        return num_channels, vec(OWENSOpenFASTWrappers.adiCalcOutput(t_initial, num_channels))
+    finally
+        OWENSOpenFASTWrappers.endTurb()
+    end
+end
+
+@testset "AeroDyn direct text with TurbSim InflowWind secondary file" begin
+    mktempdir() do dir
+        turbsim_bts = abspath(joinpath(path, "AeroDynInputs", "DLC1_1Vinf10.0.bts"))
+        @test isfile(turbsim_bts)
+
+        turbsim_ifw_file = joinpath(dir, "IW turbsim.dat")
+        turbsim_ifw_text = OWENSOpenFASTWrappers.writeIWfile(
+            Vinf,
+            turbsim_ifw_file;
+            RefHt = Hub_Height,
+            RefLength = R,
+            WindType = 3,
+            windINPfilename = turbsim_bts,
+        )
+
+        turbsim_file_channels, turbsim_file_output = _initial_aerodyn_output_with_direct_ad(
+            turbsim_ifw_file,
+            "$path/ADI_OWENS_turbsim_file";
+            ifw_input_file_passed = 0,
+            ifw_input_source = :file,
+        )
+        turbsim_text_channels, turbsim_text_output = _initial_aerodyn_output_with_direct_ad(
+            turbsim_ifw_text,
+            "$path/ADI_OWENS_turbsim_text";
+            ifw_input_file_passed = 1,
+            ifw_input_source = :text,
+        )
+
+        @test turbsim_text_channels == turbsim_file_channels
+        @test turbsim_text_channels == 2784
+        @test length(turbsim_text_output) == 2784
+        @test eltype(turbsim_text_output) === Float32
+        @test all(isfinite, turbsim_text_output)
+        @test turbsim_text_output ≈ turbsim_file_output rtol=0 atol=1f-6
+    end
+end
 
 
 ######################################

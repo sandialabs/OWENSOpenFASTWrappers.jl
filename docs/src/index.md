@@ -1,17 +1,27 @@
-# OWENSOpenFASTWrappers
+# OWENSOpenFASTWrappers.jl
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://sandialabs.github.io/OWENSOpenFASTWrappers.jl)
-[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://sandialabs.github.io/OWENSOpenFASTWrappers.jl/dev)
-![](https://github.com/sandialabs/OWENSOpenFASTWrappers.jl/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/sandialabs/OWENSOpenFASTWrappers.jl/graph/badge.svg?token=1egaz9f5cT)](https://codecov.io/gh/sandialabs/OWENSOpenFASTWrappers.jl)
+OWENSOpenFASTWrappers provides Julia lifecycle wrappers for selected OpenFAST libraries used by OWENS: InflowWind, AeroDyn, HydroDyn, and MoorDyn. It also exposes OpenFAST driver executables such as TurbSim through `OWENSOpenFAST_jll`.
 
-* *Documentation:* [sandialabs.github.io/OWENSOpenFASTWrappers.jl/](https://sandialabs.github.io/OWENSOpenFASTWrappers.jl/dev)
-* *Code:* [github.com/sandialabs/OWENSOpenFASTWrappers.jl](https://github.com/sandialabs/OWENSOpenFASTWrappers.jl)
+![OWENSOpenFASTWrappers lifecycle](assets/openfast_lifecycle.svg)
 
-This is part of the Sandia National Labs OWENS toolkit (Onshore/Offshore Wind/Water Energy Simulator).  This package provides a frontend julia wrapper to many of the popular OpenFAST libraries, including AeroDyn, HydroDyn, MoorDyn, InflowWind, and Turbsim.  The package can be used standalone, as shown in the test cases, or in conjunction with OWENS.jl.  The OWENSOpenFAST_jll.jl package was also created, which this is linked to, which provides cross compiled binaries for the major operating systems and significantly improves the installation experience.  Please also note the API reference in these docs, which gives a searchable index of all of the functions with their inputs and outputs. Please make any pull requests against the dev branch.
+The package can be used standalone for focused OpenFAST-library calls or as the OpenFAST-facing backend for OWENS coupled simulations. Most wrappers follow the same pattern: initialize a library with input files and mesh/state data, call output and state-update functions at each time step, then end the instance to release global state.
 
-## Installation
-```julia
-pkg> add git@github.com:sandialabs/OWENSOpenFAST_jll.jl.git
-pkg> add git@github.com:sandialabs/OWENSOpenFASTWrappers.jl.git
-```
+## Wrapper Families
+
+| Family | Primary functions |
+| --- | --- |
+| InflowWind | `ifwinit`, `ifwcalcoutput`, `ifwend` |
+| AeroDyn | `adiInit`, `adiCalcOutput`, `adiUpdateStates`, `adiEnd`, plus the higher-level `setupTurb` path |
+| HydroDyn | `HD_Init`, `HD_CalcOutput`, `HD_UpdateStates`, `HD_End` |
+| MoorDyn | `MD_Init`, `MD_CalcOutput`, `MD_UpdateStates`, `MD_End` |
+| Driver binaries | `turbsim`, `aerodyn_driver`, `hydrodyn_driver`, `inflowwind_driver`, `moordyn_driver` |
+
+## Documentation Map
+
+- [Quickstart](quickstart.md) covers installation and the smallest InflowWind-style lifecycle.
+- [OpenFAST Artifacts](openfast_artifacts.md) covers native-library resolution and platform smoke checks.
+- [Wrapper Lifecycle](lifecycle.md) explains init/calc/update/end ordering and global state cleanup.
+- [AeroDyn and InflowWind](aerodyn_inflowwind.md) records the aerodynamic wrapper path and input-file expectations.
+- [HydroDyn and MoorDyn](hydrodyn_moordyn.md) covers hydrodynamic and mooring wrappers.
+- [Frames, Units, and Validation](theory/frames_units_validation.md) lists unit/frame assumptions and test-hardening rules.
+- [API Reference](reference/reference.md) is the generated function and type index.
