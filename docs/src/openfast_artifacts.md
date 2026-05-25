@@ -28,7 +28,7 @@ Each status entry contains:
 | --- | --- |
 | `path` | Absolute path resolved from `OWENSOpenFAST_jll`. |
 | `exists` | Whether that shared-library file exists locally. |
-| `can_load` | Whether `Libdl` can load the library on the current platform. |
+| `can_load` | Whether `Libdl` can load the library on the current platform. This is `missing` for artifact-provided libraries on Windows because preflight load/unload checks can hang on hosted Windows runners; wrapper initialization still loads the library when a module is used. |
 
 If `exists` is false, re-run `Pkg.instantiate()` or reinstall `OWENSOpenFAST_jll`. If `can_load` is false while the file exists, the platform artifact is present but the dynamic loader rejected it; check the operating system, architecture, and any dependent shared-library errors from a direct wrapper test.
 

@@ -19,11 +19,15 @@ end
         @test getproperty(paths, key) == getproperty(status, key).path
         @test isabspath(getproperty(status, key).path)
         @test getproperty(status, key).exists === true
-        @test getproperty(status, key).can_load === true
-        @test OWENSOpenFASTWrappers._checkedOpenFASTLibraryPath(
-            String(key),
-            getproperty(paths, key),
-        ) == getproperty(paths, key)
+        if Sys.iswindows()
+            @test ismissing(getproperty(status, key).can_load)
+        else
+            @test getproperty(status, key).can_load === true
+            @test OWENSOpenFASTWrappers._checkedOpenFASTLibraryPath(
+                String(key),
+                getproperty(paths, key),
+            ) == getproperty(paths, key)
+        end
     end
 
     missing_path = joinpath(tempdir(), "missing_openfast_override_library")

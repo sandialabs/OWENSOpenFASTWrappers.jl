@@ -44,11 +44,31 @@ function openfastLibraryPaths()
     )
 end
 
-function _openfast_artifact_status(path)
+function _isOpenFASTArtifactPath(path)
+    path_string = String(path)
+    return any(artifact_path -> path_string == artifact_path, openfastLibraryPaths())
+end
+
+function _shouldCheckOpenFASTLibraryLoad(path)
+    return !(Sys.iswindows() && _isOpenFASTArtifactPath(path))
+end
+
+function _canLoadOpenFASTLibrary(path)
     handle = Libdl.dlopen_e(path)
     can_load = handle != C_NULL
     can_load && Libdl.dlclose(handle)
-    return (path = String(path), exists = isfile(path), can_load = can_load)
+    return can_load
+end
+
+function _openfast_artifact_status(path)
+    path_string = String(path)
+    exists = isfile(path_string)
+    can_load = exists ?
+        (_shouldCheckOpenFASTLibraryLoad(path_string) ?
+            _canLoadOpenFASTLibrary(path_string) :
+            missing) :
+        false
+    return (path = path_string, exists = exists, can_load = can_load)
 end
 
 function _checkedOpenFASTLibraryPath(label, path)
@@ -57,11 +77,10 @@ function _checkedOpenFASTLibraryPath(label, path)
         throw(ArgumentError("$label library path does not exist: $path_string"))
     end
 
-    handle = Libdl.dlopen_e(path_string)
-    if handle == C_NULL
+    if _shouldCheckOpenFASTLibraryLoad(path_string) &&
+        !_canLoadOpenFASTLibrary(path_string)
         throw(ArgumentError("$label library path exists but cannot be loaded: $path_string"))
     end
-    Libdl.dlclose(handle)
     return path_string
 end
 
@@ -71,6 +90,9 @@ end
 Return a smoke-test status for each native OpenFAST shared library resolved
 through `OWENSOpenFAST_jll`. Each entry includes the absolute artifact path,
 whether the file exists, and whether `Libdl` can load it on this platform.
+Windows artifact load checks are skipped and reported as `missing` because
+preflight `dlopen`/`dlclose` checks can hang on hosted Windows runners; wrapper
+initialization still loads the library normally when a module is used.
 """
 function openfastLibraryArtifactStatus()
     paths = openfastLibraryPaths()
