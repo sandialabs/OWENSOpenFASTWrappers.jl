@@ -1,16 +1,24 @@
-using Documenter, Literate, OWENSOpenFASTWrappers
+using Documenter, OWENSOpenFASTWrappers
 
 # Build documentation
 makedocs(;
     modules = [OWENSOpenFASTWrappers],
+    build = get(ENV, "DOCUMENTER_BUILD_DIR", "build"),
     pages = [
         "Home" => "index.md",
-        "Quickstart" => "quickstart.md",
-        "OpenFAST Artifacts" => "openfast_artifacts.md",
-        "Wrapper Lifecycle" => "lifecycle.md",
-        "AeroDyn and InflowWind" => "aerodyn_inflowwind.md",
-        "HydroDyn and MoorDyn" => "hydrodyn_moordyn.md",
-        "Frames, Units, and Validation" => joinpath("theory", "frames_units_validation.md"),
+        "Getting Started" => [
+            "Quickstart" => "quickstart.md",
+            "OpenFAST Artifacts" => "openfast_artifacts.md",
+            "Wrapper Lifecycle" => "lifecycle.md",
+        ],
+        "Wrappers" => [
+            "AeroDyn and InflowWind" => "aerodyn_inflowwind.md",
+            "HydroDyn and MoorDyn" => "hydrodyn_moordyn.md",
+        ],
+        "Theory and Development" => [
+            "Frames, Units, and Validation" => joinpath("theory", "frames_units_validation.md"),
+            "Developer Guide" => "developer_guide.md",
+        ],
         "API Reference" => joinpath("reference", "reference.md"),
     ],
     sitename = "OWENSOpenFASTWrappers.jl",
