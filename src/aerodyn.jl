@@ -898,6 +898,8 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
     nacAngle    = [zeros(3) for i=1:numTurbines],                      # m
     )
 
+    validateADIRotationDirection(isHAWT, rotation_direction)
+
     if isnothing(adi_lib)
         # adi_lib = "$path/../deps/openfast/build/modules/aerodyn/libaerodyn_inflow_c_binding"
         adi_lib = libaerodyn_inflow_c_binding
@@ -914,7 +916,6 @@ function setupTurb(adi_lib,ad_input_file,ifw_input_file,adi_rootname,bld_x,bld_z
 
     global turbine = Array{Turbine}(undef, numTurbines)
     global turbstruct = Array{Structure}(undef, numTurbines)
-    validateADIRotationDirection(isHAWT, rotation_direction)
 
     for iturb = 1:numTurbines
 
