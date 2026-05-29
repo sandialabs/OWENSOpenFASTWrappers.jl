@@ -270,6 +270,33 @@ end
     @test aero_fatal[] isa ErrorException
     @test occursin("AeroDyn-Inflow terminated prematurely", sprint(showerror, aero_fatal[]))
 
+    missing_library = joinpath(tempdir(), "owens_openfast_missing_libaerodyn")
+    @test !isfile(missing_library)
+    minimal_aerodyn_setup_args = (
+        missing_library,
+        "AeroDyn.dat",
+        "InflowWind.dat",
+        "unit",
+        Any[],
+        Any[],
+        Int[],
+        0.0,
+        Any[],
+        Any[],
+        Any[],
+        Any[],
+    )
+    @test_throws ArgumentError OWENSOpenFASTWrappers.setupTurb(
+        minimal_aerodyn_setup_args...;
+        isHAWT=false,
+        rotation_direction=:cw,
+    )
+    @test_throws ArgumentError OWENSOpenFASTWrappers.setupTurb(
+        minimal_aerodyn_setup_args...;
+        isHAWT=true,
+        rotation_direction=:ccw,
+    )
+
     mktempdir() do dir
         hydro_file = joinpath(dir, "hydrodyn.dat")
         write(hydro_file, "header\nline\n")
